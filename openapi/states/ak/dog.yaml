@@ -1,0 +1,46 @@
+openapi: 3.1.0
+info:
+  title: Alaska DOG GIS API
+  description: >
+    Query oil & gas spatial data from Alaska’s Division of Oil and Gas (DOG) via ArcGIS REST services.
+  version: 1.0.0
+servers:
+  - url: https://dog.dnr.alaska.gov/arcgis/rest/services/DOG_GIS/DOG_GIS/MapServer
+    description: DOG ArcGIS service base
+paths:
+  /2/query:
+    get:
+      operationId: queryOilGasUnits
+      summary: Query Oil & Gas Units by name or attribute
+      parameters:
+        - name: where
+          in: query
+          required: true
+          description: SQL-style WHERE clause, e.g. `UnitName LIKE '%PRUDHOE%'`
+          schema:
+            type: string
+        - name: outFields
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "*"
+        - name: returnGeometry
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+        - name: f
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [json]
+      responses:
+        '200':
+          description: Query response
+          content:
+            application/json:
+              schema:
+                type: object

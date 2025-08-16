@@ -1,0 +1,62 @@
+openapi: 3.1.0
+info:
+  title: PHMSA Pipeline Data API
+  description: >
+    Access data on pipeline incidents, operators, inspections, and more from the U.S. DOT PHMSA data web services.
+  version: 1.0.0
+servers:
+  - url: https://primis.phmsa.dot.gov
+    description: PHMSA data service
+paths:
+  /comm/reports/enforce/EnfData.json:
+    get:
+      operationId: getEnforcementData
+      summary: Get pipeline enforcement data
+      description: >
+        Returns enforcement data for pipeline operators, including case number, operator name, and location.
+      responses:
+        '200':
+          description: Enforcement data records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    caseNumber:
+                      type: string
+                    operatorName:
+                      type: string
+                    city:
+                      type: string
+                    state:
+                      type: string
+                    dateIssued:
+                      type: string
+                    penaltyAmount:
+                      type: string
+  /comm/reports/operator/OperatorData.json:
+    get:
+      operationId: getOperatorData
+      summary: Get pipeline operator data
+      description: >
+        Returns operator information including name, region, and system details.
+      responses:
+        '200':
+          description: Operator data records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    operatorName:
+                      type: string
+                    opid:
+                      type: string
+                    state:
+                      type: string
+                    region:
+                      type: string

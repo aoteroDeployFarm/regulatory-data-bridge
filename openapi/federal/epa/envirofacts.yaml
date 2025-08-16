@@ -1,0 +1,34 @@
+openapi: 3.1.0
+info:
+  title: EPA Envirofacts API
+  description: >
+    Access environmental facility data from EPA's Envirofacts system.
+  version: 1.0.0
+servers:
+  - url: https://enviro.epa.gov/enviro/efservice
+    description: EPA Envirofacts service
+paths:
+  /facility/{column_name}/{value}/JSON:
+    get:
+      operationId: getFacilityByField
+      summary: Get facilities by column and value
+      parameters:
+        - name: column_name
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: value
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of matching facilities
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object

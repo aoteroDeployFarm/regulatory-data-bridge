@@ -1,0 +1,46 @@
+openapi: 3.1.0
+info:
+  title: California Water Boards CKAN API
+  description: >
+    Access public datasets from the California Water Boards via the Data.ca.gov CKAN API.
+  version: 1.0.0
+servers:
+  - url: https://data.ca.gov/api/3/action
+    description: CKAN API endpoint for CA Water Boards datasets
+paths:
+  /datastore_search:
+    get:
+      operationId: searchWaterboardsData
+      summary: Search a Water Boards dataset using its resource ID
+      parameters:
+        - name: resource_id
+          in: query
+          required: true
+          description: The ID of the resource (dataset)
+          schema:
+            type: string
+        - name: q
+          in: query
+          required: false
+          description: Optional search query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 100
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Successful query
+          content:
+            application/json:
+              schema:
+                type: object

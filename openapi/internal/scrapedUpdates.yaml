@@ -1,0 +1,46 @@
+openapi: 3.1.0
+info:
+  title: Internal Scraped Updates API
+  version: 1.0.0
+  description: >
+    Internal API wrapper to check for updates on static government websites that do not offer public APIs.
+    Supports FERC and will grow to include other sources (e.g., BOEM, CPUC, etc.).
+servers:
+  - url: https://your-internal-api.example.com
+    description: Your internal FastAPI or scraping service
+paths:
+  /check-site-update:
+    get:
+      operationId: checkScrapedSiteUpdate
+      summary: Check if a static website has been updated
+      description: >
+        Use this endpoint to check if a known static site (like FERC) has changed since the last check.
+        Supported URLs must match one of the internally handled domains.
+      parameters:
+        - name: url
+          in: query
+          required: true
+          description: The full URL of the site to check (e.g., https://www.ferc.gov/news-events/news)
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Update status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url:
+                    type: string
+                  updated:
+                    type: boolean
+                  lastChecked:
+                    type: string
+                    format: date-time
+                  diffSummary:
+                    type: string
+        '400':
+          description: Unsupported or invalid URL
+        '500':
+          description: Internal scraping error

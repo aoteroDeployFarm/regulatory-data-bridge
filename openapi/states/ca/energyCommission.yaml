@@ -1,0 +1,58 @@
+openapi: 3.1.0
+info:
+  title: CA Energy Commission Data API
+  version: 1.0.0
+  description: >
+    Access energy-related datasets from the California Energy Commission via the CKAN-powered data.ca.gov API.
+servers:
+  - url: https://data.ca.gov
+    description: data.ca.gov API server
+paths:
+  /api/3/action/datastore_search:
+    get:
+      operationId: searchCkanResource
+      summary: Search a CEC dataset by resource ID
+      description: >
+        Query a specific dataset from the California Energy Commission using a CKAN resource ID and an optional search query.
+      parameters:
+        - name: resource_id
+          in: query
+          required: true
+          description: CKAN resource ID of the dataset to search
+          schema:
+            type: string
+        - name: q
+          in: query
+          required: false
+          description: Search query (e.g., city name, plant name)
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          description: Max number of records to return (default is 100)
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          required: false
+          description: Offset for pagination
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: CKAN search results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  result:
+                    type: object
+                    properties:
+                      records:
+                        type: array
+                        items:
+                          type: object

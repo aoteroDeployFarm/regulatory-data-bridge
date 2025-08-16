@@ -1,0 +1,46 @@
+openapi: 3.1.0
+info:
+  title: CEC Power Plant Facilities API
+  description: >
+    Access power plant facility data from the California Energy Commission using their ArcGIS REST API.
+  version: 1.0.0
+servers:
+  - url: https://services.energy.ca.gov/arcgis/rest/services/CEC/CEC_PowerPlants/MapServer
+    description: CEC ArcGIS API base
+paths:
+  /0/query:
+    get:
+      operationId: queryPowerPlants
+      summary: Query power plants by county or fuel type
+      parameters:
+        - name: where
+          in: query
+          required: true
+          description: SQL-style condition (e.g. `COUNTY='LOS ANGELES'`)
+          schema:
+            type: string
+        - name: outFields
+          in: query
+          required: false
+          schema:
+            type: string
+            default: '*'
+        - name: returnGeometry
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+        - name: f
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [json]
+      responses:
+        '200':
+          description: Successful query
+          content:
+            application/json:
+              schema:
+                type: object

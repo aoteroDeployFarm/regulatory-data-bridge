@@ -1,0 +1,46 @@
+openapi: 3.1.0
+info:
+  title: CalGEM Oil and Gas Wells API
+  description: >
+    Query California Geologic Energy Management Division (CalGEM) well data via their public ArcGIS REST API.
+  version: 1.0.0
+servers:
+  - url: https://gis.conservation.ca.gov/server/rest/services/Well/MapServer
+    description: CalGEM ArcGIS API base
+paths:
+  /0/query:
+    get:
+      operationId: queryWells
+      summary: Query oil and gas wells by field or operator
+      parameters:
+        - name: where
+          in: query
+          required: true
+          description: SQL-style condition (e.g. `FIELD_NAME='MIDWAY-SUNSET'`)
+          schema:
+            type: string
+        - name: outFields
+          in: query
+          required: false
+          schema:
+            type: string
+            default: '*'
+        - name: returnGeometry
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+        - name: f
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [json]
+      responses:
+        '200':
+          description: Successful query
+          content:
+            application/json:
+              schema:
+                type: object
