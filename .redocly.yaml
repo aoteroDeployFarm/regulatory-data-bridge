@@ -1,0 +1,15 @@
+extends:
+  - recommended
+
+rules:
+  # Keep these strict (good hygiene)
+  operation-2xx-response: error
+  operation-summary: error
+  operation-operationId-unique: error
+  no-invalid-media-type-examples: error
+
+  # Relax this so /health doesn’t need a 4xx example
+  operation-4xx-response: off
+
+  # (Optional) keep as warn if you want gentle nudges:
+  # tag-description: warn

@@ -1,0 +1,9 @@
+{
+  "devDependencies": {
+    "@redocly/cli": "^2.0.7"
+  },
+  "scripts": {
+    "oas:lint": "redocly lint openapi/internal/regulatory-data-bridge.yaml",
+    "oas:bundle": "redocly bundle openapi/internal/regulatory-data-bridge.yaml -o openapi/internal/bundle.yaml"
+  }
+}

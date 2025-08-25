@@ -1,0 +1,307 @@
+openapi: 3.1.0
+info:
+  title: Regulatory Data Bridge API
+  version: 0.1.0
+  description: >
+    Service that discovers and runs scrapers for federal/state regulatory sites,
+    and exposes health/metrics.
+  contact:
+    name: Maintainers
+    url: https://example.com
+    email: ops@example.com
+  license:
+    name: MIT
+    identifier: MIT
+
+jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
+
+servers:
+  - url: http://127.0.0.1:8000
+    description: Local dev
+
+# Explicitly specify “no auth” at the root to satisfy security rules.
+security: []
+
+tags:
+  - name: Health
+    description: Health and readiness checks.
+  - name: Scrapers
+    description: List, select, and run scrapers.
+  - name: Metrics
+    description: Simple counters since process start.
+
+x-tagGroups:
+  - name: Core
+    tags: [Health, Scrapers, Metrics]
+
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Health probe
+      operationId: getHealth
+      responses:
+        "200":
+          description: Service is running
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+              examples:
+                ok:
+                  value: { ok: true, env: "dev", scrapers: 123 }
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+
+  /scrapers:
+    get:
+      tags: [Scrapers]
+      summary: List registered scrapers
+      operationId: listScrapers
+      responses:
+        "200":
+          description: List of scraper anchor keys (usually target URLs)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScrapersResponse"
+              examples:
+                sample:
+                  value:
+                    count: 3
+                    keys:
+                      - https://www.conservation.ca.gov/calgem
+                      - https://www.epa.gov/npdes-permits/oregon-npdes-permits
+                      - https://puc.colorado.gov
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+
+  /check-site-update:
+    get:
+      tags: [Scrapers]
+      summary: Run a single scraper by URL
+      description: Picks the scraper with the **longest substring match** among registered keys.
+      operationId: checkSiteUpdate
+      parameters:
+        - name: url
+          in: query
+          required: true
+          description: Absolute URL to check.
+          schema:
+            type: string
+            format: uri
+      responses:
+        "200":
+          description: Scraper ran
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckSiteUpdateResponse"
+              examples:
+                html:
+                  value:
+                    url: https://www.conservation.ca.gov/calgem
+                    updated: false
+                    lastChecked: "2025-08-25T19:03:42Z"
+                    diffSummary: No change
+                pdf:
+                  value:
+                    url: https://www.floridapsc.com/pscfiles/.../RuleBookletCh25-2025.pdf
+                    updated: true
+                    diffSummary: PDF signature changed
+        "400":
+          description: No matching scraper
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+              examples:
+                missing:
+                  value:
+                    type: about:blank
+                    title: Bad Request
+                    status: 400
+                    detail: No scraper registered for this URL
+
+  /batch-check:
+    get:
+      tags: [Scrapers]
+      summary: Run all scrapers
+      operationId: batchCheck
+      responses:
+        "200":
+          description: Consolidated run
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BatchCheckResponse"
+              examples:
+                sample:
+                  value:
+                    count: 3
+                    results:
+                      - url: https://www.conservation.ca.gov/calgem
+                        updated: false
+                        lastChecked: "2025-08-25T19:03:42Z"
+                        diffSummary: No change
+                        scraper: https://www.conservation.ca.gov/calgem
+                      - url: https://www.epa.gov/npdes-permits/oregon-npdes-permits
+                        updated: true
+                        diffSummary: Content hash changed
+                        scraper: https://www.epa.gov/npdes-permits/oregon-npdes-permits
+                      - url: https://puc.colorado.gov
+                        updated: false
+                        diffSummary: No change
+                        scraper: https://puc.colorado.gov
+                    updated: 1
+                    errors: 0
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+
+  /metrics:
+    get:
+      tags: [Metrics]
+      summary: Simple counters
+      operationId: getMetrics
+      responses:
+        "200":
+          description: Counters since process start
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MetricsResponse"
+              examples:
+                sample:
+                  value: { runs: 12, updates: 19, errors: 2 }
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        env:
+          type: string
+          description: dev | test | prod
+        scrapers:
+          type: integer
+          minimum: 0
+      required: [ok, env, scrapers]
+      additionalProperties: false
+
+    ScrapersResponse:
+      type: object
+      properties:
+        count:
+          type: integer
+          minimum: 0
+        keys:
+          type: array
+          items:
+            type: string
+            format: uri
+      required: [count, keys]
+      additionalProperties: false
+
+    CheckSiteUpdateResponse:
+      type: object
+      description: Result from a single scraper invocation.
+      properties:
+        url:
+          type: string
+          format: uri
+        updated:
+          type: boolean
+        diffSummary:
+          type: string
+          description: Short change reason.
+        lastChecked:
+          type: string
+          format: date-time
+          description: Present on HTML-based scrapers using _base helper.
+      required: [url, updated]
+      additionalProperties: true
+
+    BatchCheckItem:
+      allOf:
+        - $ref: "#/components/schemas/CheckSiteUpdateResponse"
+        - type: object
+          properties:
+            scraper:
+              type: string
+              description: Anchor key used for routing (e.g., TARGET_URL).
+          required: [scraper]
+
+    BatchCheckResponse:
+      type: object
+      properties:
+        count:
+          type: integer
+          minimum: 0
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/BatchCheckItem"
+        updated:
+          type: integer
+          description: Number of items with updated=true in this run.
+          minimum: 0
+        errors:
+          type: integer
+          description: Number of scrapers that raised exceptions.
+          minimum: 0
+      required: [count, results, updated, errors]
+      additionalProperties: false
+
+    MetricsResponse:
+      type: object
+      properties:
+        runs:
+          type: integer
+          minimum: 0
+        updates:
+          type: integer
+          minimum: 0
+        errors:
+          type: integer
+          minimum: 0
+      required: [runs, updates, errors]
+      additionalProperties: false
+
+    Problem:
+      type: object
+      description: RFC 7807 Problem Details
+      properties:
+        type:
+          type: string
+          format: uri
+          default: "about:blank"
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+      required: [title, status]
+      additionalProperties: true
