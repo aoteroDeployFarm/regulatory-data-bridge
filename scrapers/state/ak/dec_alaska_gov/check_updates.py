@@ -2,7 +2,7 @@
 from __future__ import annotations
 from pathlib import Path
 
-TARGET_URL = "https://dec.alaska.gov/air/air-permit/"
+TARGET_URL = "https://dec.alaska.gov/spar/ppr/contingency-plans/"
 CACHE_DIR = Path(__file__).parent / ".cache"
 
 # Prefer shared HTTP helper; fall back to requests
