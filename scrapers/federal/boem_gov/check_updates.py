@@ -1,4 +1,5 @@
-import requests
+import requests, os
+from scrapers._base import check_updated
 from bs4 import BeautifulSoup
 import hashlib
 import os
@@ -9,9 +10,9 @@ CACHE_DIR = os.path.join(os.path.dirname(__file__), ".cache")
 CACHE_FILE = os.path.join(CACHE_DIR, "last_hash.txt")
 
 def fetch_html():
-    response = requests.get(TARGET_URL, timeout=10)
-    response.raise_for_status()
-    return response.text
+    r = requests.get(TARGET_URL, timeout=15)
+    r.raise_for_status()
+    return r.text
 
 def extract_content(html):
     soup = BeautifulSoup(html, "html.parser")
@@ -42,12 +43,13 @@ def check_for_update():
     if updated:
         save_hash(new_hash)
 
-    return {
-        "url": TARGET_URL,
-        "updated": updated,
-        "lastChecked": datetime.utcnow().isoformat() + "Z",
-        "diffSummary": "Newsroom content changed" if updated else "No change detected"
-    }
+    return check_updated(
+        fetch_html_fn=fetch_html,
+        cache_dir=CACHE_DIR,
+        selector=".view-content .views-row a, h2, h3",
+        url=TARGET_URL,
+        diff_label="BOEM news"
+    )
 
 if __name__ == "__main__":
     print(check_for_update())
