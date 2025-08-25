@@ -4,15 +4,20 @@ from bs4 import BeautifulSoup
 import hashlib
 import os
 from datetime import datetime
+from shared.http import fetch_text
 
 TARGET_URL = "https://www.ferc.gov/news-events/news"
 CACHE_DIR = os.path.join(os.path.dirname(__file__), ".cache")
 CACHE_FILE = os.path.join(CACHE_DIR, "last_hash.txt")
 
+
 def fetch_html():
-    r = requests.get(TARGET_URL, timeout=15)
-    r.raise_for_status()
-    return r.text
+    return fetch_text(TARGET_URL)
+
+#def fetch_html():
+#    r = requests.get(TARGET_URL, timeout=15)
+#    r.raise_for_status()
+#    return r.text
 
 def extract_content(html):
     soup = BeautifulSoup(html, "html.parser")

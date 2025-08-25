@@ -30,20 +30,27 @@ def check_site_update(url: str, request: Request):
 
 @router.get("/batch-check")
 def batch_check(request: Request):
-    """
-    Run all registered scrapers and return a consolidated report.
-    """
     registry = getattr(request.app.state, "scraper_map", {}) or {}
+    m = request.app.state.metrics
+    m["runs"] += 1
+
     out = []
+    updates = 0
+    errors = 0
     for key, fn in registry.items():
         try:
             res = fn()
+            if res.get("updated"):
+                updates += 1
             res["scraper"] = key
             out.append(res)
         except Exception as e:
+            errors += 1
             out.append({"scraper": key, "error": str(e)})
-    return {"count": len(out), "results": out}
 
+    m["updates"] += updates
+    m["errors"] += errors
+    return {"count": len(out), "results": out, "updated": updates, "errors": errors}
 
 @router.get("/scrapers")
 def list_scrapers(request: Request):
