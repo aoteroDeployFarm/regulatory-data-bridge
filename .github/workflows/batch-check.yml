@@ -1,0 +1,27 @@
+name: Batch check (weekdays)
+
+on:
+  workflow_dispatch: {}        # lets you run it manually from the Actions tab
+  schedule:
+    - cron: '0 13 * * 1-5'     # 13:00 UTC = 7:00 AM in Denver during DST
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      # Install jq (often preinstalled, but this makes it explicit)
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Call batch-check and post to Slack
+        env:
+          API_URL: ${{ secrets.RDB_API_URL }}          # e.g., https://your-host
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}  # Slack incoming webhook
+        run: |
+          set -e
+          RES=$(curl -s "$API_URL/batch-check")
+          UPDATED=$(echo "$RES" | jq '[.results[] | select(.updated==true)] | length')
+          TEXT="Regulatory update check: *${UPDATED}* site(s) changed."
+          curl -s -X POST -H 'Content-type: application/json' \
+            --data "{\"text\":\"${TEXT}\"}" \
+            "$SLACK_WEBHOOK"
