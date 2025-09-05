@@ -64,7 +64,10 @@
         "https://www.vcapcd.org",
         "https://www.ourair.org",
         "https://www.mbard.org",
-        "https://www.mdaqmd.ca.gov"
+        "https://www.mdaqmd.ca.gov",
+        "https://osfm.fire.ca.gov/what-we-do/code-development-and-analysis",
+        "https://www.dgs.ca.gov/-/media/Divisions/BSC/03-Rulemaking/2024-Triennial-Cycle/CAC/2024-07-09-BFO/SFM-06-24-ISOR-PT9.pdf",
+        "https://codes.iccsafe.org/content/CAFC2022P3/chapter-1-scope-and-administration"
     ],
     "Colorado": [
         "https://ecmc.state.co.us",
@@ -108,7 +111,11 @@
         "https://floridadep.gov/water/stormwater",
         "https://floridadep.gov/rcp/fcmp/content/federal-consistency-intergovernmental-coordination-and-review",
         "https://floridadep.gov/rcp/fcmp/content/about-florida-coastal-management-program",
-        "https://floridadep.gov/air/air-director/content/local-program-air-contacts"
+        "https://floridadep.gov/air/air-director/content/local-program-air-contacts",
+        "https://myfloridacfo.com/division/sfm/bfp/florida-fire-prevention-code",
+        "https://www.leg.state.fl.us/Statutes/index.cfm?App_mode=Display_Statute&URL=0600-0699%2F0633%2FSections%2F0633.202.html",
+        "https://www.law.cornell.edu/regulations/florida/Fla-Admin-Code-Ann-R-69A-3-012",
+        "https://www.myfloridacfo.com/docs-sf/state-fire-marshal-libraries/sfm-documents/bfp/local-amendments/2025-updated-procedure-and-information-for-adoption-of-local-amendments-.pdf?sfvrsn=c2059ec1_1"        
     ],
     "Georgia": [
         "https://epd.georgia.gov/chapter-391-3-13-rules-oil-and-gas-and-deep-drilling",
@@ -472,7 +479,11 @@
         "https://www.tceq.texas.gov/permitting/wastewater/pretreatment/tpdes_definition.html",
         "https://www.glo.texas.gov/energy/mineral-leasing/leasing",
         "https://www.glo.texas.gov/coastal/oil-spill-prevention-and-response",
-        "https://www.puc.texas.gov/"
+        "https://www.puc.texas.gov/",
+        "https://www.tdi.texas.gov/fire/fmfsinotices.html",
+        "https://www.tdi.texas.gov/rules/2023/documents/20237848.pdf",
+        "https://www.tceq.texas.gov/downloads/rules/adoptions/22015338_ado.pdf",
+        "https://services.austintexas.gov/edims/document.cfm?id=432220"        
     ],
     "Utah": [
         "https://ogm.utah.gov/",
