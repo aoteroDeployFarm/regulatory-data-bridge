@@ -1,0 +1,1164 @@
+.
+├── .env
+├── .env.example
+├── .github
+│   ├── issues.yml
+│   └── workflows
+│       ├── batch-check.yml
+│       ├── ci.yml
+│       └── validate-openapi.yml
+├── .gitignore
+├── .redocly.yaml
+├── .vscode
+│   └── settings.json
+├── app
+│   ├── core
+│   │   └── settings.py
+│   ├── main.py
+│   └── routers
+│       ├── __init__.py
+│       ├── ask.py
+│       ├── notifications.py
+│       └── process.py
+├── clean-scrapers.sh
+├── data
+│   └── issues.json
+├── docker-compose.yml
+├── Dockerfile
+├── docs
+│   ├── API.md
+│   └── curl-scrapers.md
+├── init_query_scripts.sh
+├── init-structure.sh
+├── LICENSE
+├── Makefile.mak
+├── openapi
+│   ├── federal
+│   │   ├── epa
+│   │   │   ├── envirofacts.yaml
+│   │   │   └── readme.md
+│   │   └── phmsa
+│   │       └── enforcementAndOperators.yaml
+│   ├── internal
+│   │   ├── readme.md
+│   │   ├── regulatory-data-bridge.yaml
+│   │   └── scrapedUpdates.yaml
+│   ├── shared-components
+│   └── states
+│       ├── ak
+│       │   └── dog.yaml
+│       └── ca
+│           ├── calgem.yaml
+│           ├── cec.yaml
+│           ├── conservation
+│           │   └── arcgisWells.yaml
+│           ├── energyCommission.yaml
+│           └── waterboards.yaml
+├── package-lock.json
+├── package.json
+├── pyproject.toml
+├── README.md
+├── requirements-dev.txt
+├── scrapers
+│   ├── __init__.py
+│   ├── _base.py
+│   ├── common
+│   ├── conservation.ca.gov
+│   │   └── check_updates.py
+│   ├── cpuc.ca.gov
+│   │   └── check_updates.py
+│   ├── energy.ca.gov
+│   ├── federal
+│   │   ├── __init__.py
+│   │   ├── boem_gov
+│   │   │   └── check_updates.py
+│   │   ├── bsee_gov
+│   │   │   └── check_updates.py
+│   │   └── ferc_gov
+│   │       ├── __init__.py
+│   │       └── check_updates.py
+│   ├── state
+│   │   ├── __init__.py
+│   │   ├── ak
+│   │   │   ├── __init__.py
+│   │   │   ├── dec_alaska_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── dog_dnr_alaska_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── rca_alaska_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_commerce_alaska_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   └── www_epa_gov
+│   │   │       ├── __init__.py
+│   │   │       └── check_updates.py
+│   │   ├── al
+│   │   │   ├── __init__.py
+│   │   │   ├── adem_alabama_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── apsc_alabama_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── psc_alabama_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_epa_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_gsa_state_al_us
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_huntsvilleal_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   └── www_jcdh_org
+│   │   │       ├── __init__.py
+│   │   │       └── check_updates.py
+│   │   ├── ar
+│   │   │   ├── __init__.py
+│   │   │   ├── apsc_arkansas_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── ee_arkansas_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_adeq_state_ar_us
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_aogc_state_ar_us
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   └── www_epa_gov
+│   │   │       ├── __init__.py
+│   │   │       └── check_updates.py
+│   │   ├── az
+│   │   │   ├── __init__.py
+│   │   │   ├── azcc_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── azdeq_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── azogcc_az_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── land_az_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_maricopa_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_pima_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   └── www_pinal_gov
+│   │   │       ├── __init__.py
+│   │   │       └── check_updates.py
+│   │   ├── ca
+│   │   │   ├── __init__.py
+│   │   │   ├── calepa_ca_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── osfm_fire_ca_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── ww2_arb_ca_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_airquality_org
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_aqmd_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_baaqmd_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_conservation_ca_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_cpuc_ca_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_dir_ca_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_energy_ca_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_mbard_org
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_mdaqmd_ca_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_ourair_org
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_sdapcd_org
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_slc_ca_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_valleyair_org
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_vcapcd_org
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   └── www_waterboards_ca_gov
+│   │   │       ├── __init__.py
+│   │   │       └── check_updates.py
+│   │   ├── co
+│   │   │   ├── __init__.py
+│   │   │   ├── cdphe_colorado_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── ecmc_state_co_us
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── puc_colorado_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   └── slb_colorado_gov
+│   │   │       ├── __init__.py
+│   │   │       └── check_updates.py
+│   │   ├── ct
+│   │   │   ├── __init__.py
+│   │   │   ├── filings_deep_ct_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── portal_ct_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   └── www_epa_gov
+│   │   │       ├── __init__.py
+│   │   │       └── check_updates.py
+│   │   ├── de
+│   │   │   ├── __init__.py
+│   │   │   ├── den_dnrec_delaware_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── depsc_delaware_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── dnrec_delaware_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   └── www_epa_gov
+│   │   │       ├── __init__.py
+│   │   │       └── check_updates.py
+│   │   ├── fl
+│   │   │   ├── __init__.py
+│   │   │   ├── floridadep_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── prodenv_dep_state_fl_us
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_epa_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   └── www_floridapsc_com
+│   │   │       └── __init__.py
+│   │   ├── ga
+│   │   │   ├── __init__.py
+│   │   │   ├── epd_georgia_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── gspc_georgia_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── law_justia_com
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── psc_ga_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── rules_sos_ga_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   └── rules_sos_state_ga_us
+│   │   │       ├── __init__.py
+│   │   │       └── check_updates.py
+│   │   ├── hi
+│   │   │   ├── __init__.py
+│   │   │   ├── health_hawaii_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── planning_hawaii_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   └── www_epa_gov
+│   │   │       ├── __init__.py
+│   │   │       └── check_updates.py
+│   │   ├── ia
+│   │   │   ├── __init__.py
+│   │   │   ├── iuc_iowa_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── programs_iowadnr_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_epa_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_iowadnr_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_linncountyiowa_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   └── www_polkcountyiowa_gov
+│   │   │       ├── __init__.py
+│   │   │       └── check_updates.py
+│   │   ├── id
+│   │   │   ├── __init__.py
+│   │   │   ├── ogcc_idaho_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── puc_idaho_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_deq_idaho_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_epa_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   └── www_idl_idaho_gov
+│   │   │       ├── __init__.py
+│   │   │       └── check_updates.py
+│   │   ├── il
+│   │   │   ├── __init__.py
+│   │   │   ├── dnr_illinois_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── epa_illinois_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_epa_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_ilga_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   └── www_illinois_gov
+│   │   │       ├── __init__.py
+│   │   │       └── check_updates.py
+│   │   ├── in
+│   │   │   ├── __init__.py
+│   │   │   ├── www_epa_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   └── www_in_gov
+│   │   │       ├── __init__.py
+│   │   │       └── check_updates.py
+│   │   ├── ks
+│   │   │   ├── __init__.py
+│   │   │   ├── www_epa_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_kcc_ks_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_kdhe_ks_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   └── www_wycokck_org
+│   │   │       ├── __init__.py
+│   │   │       └── check_updates.py
+│   │   ├── ky
+│   │   │   ├── __init__.py
+│   │   │   ├── eec_ky_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── louisvilleky_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── psc_ky_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   └── www_epa_gov
+│   │   │       ├── __init__.py
+│   │   │       └── check_updates.py
+│   │   ├── la
+│   │   │   ├── __init__.py
+│   │   │   ├── deq_louisiana_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   └── www_dnr_louisiana_gov
+│   │   │       ├── __init__.py
+│   │   │       └── check_updates.py
+│   │   ├── ma
+│   │   │   ├── __init__.py
+│   │   │   ├── www_epa_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   └── www_mass_gov
+│   │   │       ├── __init__.py
+│   │   │       └── check_updates.py
+│   │   ├── md
+│   │   │   ├── __init__.py
+│   │   │   ├── dnr_maryland_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── mde_maryland_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── mdedataviewer_mde_state_md_us
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_epa_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   └── www_psc_state_md_us
+│   │   │       ├── __init__.py
+│   │   │       └── check_updates.py
+│   │   ├── me
+│   │   │   ├── __init__.py
+│   │   │   ├── www_epa_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   └── www_maine_gov
+│   │   │       ├── __init__.py
+│   │   │       └── check_updates.py
+│   │   ├── mi
+│   │   │   ├── __init__.py
+│   │   │   ├── www_deq_state_mi_us
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_egle_state_mi_us
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_epa_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   └── www_michigan_gov
+│   │   │       ├── __init__.py
+│   │   │       └── check_updates.py
+│   │   ├── mn
+│   │   │   ├── __init__.py
+│   │   │   ├── dps_mn_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_dnr_state_mn_us
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_epa_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   └── www_pca_state_mn_us
+│   │   │       ├── __init__.py
+│   │   │       └── check_updates.py
+│   │   ├── mo
+│   │   │   ├── __init__.py
+│   │   │   ├── dnr_mo_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── psc_mo_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── stlouiscountymo_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_epa_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   └── www_kcmo_gov
+│   │   │       ├── __init__.py
+│   │   │       └── check_updates.py
+│   │   ├── ms
+│   │   │   ├── __init__.py
+│   │   │   ├── opcgis_deq_state_ms_us
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_epa_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_mdeq_ms_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_ogb_state_ms_us
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   └── www_psc_ms_gov
+│   │   │       ├── __init__.py
+│   │   │       └── check_updates.py
+│   │   ├── mt
+│   │   │   ├── __init__.py
+│   │   │   ├── bogapps_dnrc_mt_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── deq_mt_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── dnrc_mt_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── psc_mt_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   └── www_epa_gov
+│   │   │       ├── __init__.py
+│   │   │       └── check_updates.py
+│   │   ├── nc
+│   │   │   ├── __init__.py
+│   │   │   ├── airquality_mecknc_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_deq_nc_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_epa_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_forsyth_cc
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   └── www_ncuc_gov
+│   │   │       ├── __init__.py
+│   │   │       └── check_updates.py
+│   │   ├── nd
+│   │   │   ├── __init__.py
+│   │   │   ├── deq_nd_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── psc_nd_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_dmr_nd_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   └── www_land_nd_gov
+│   │   │       ├── __init__.py
+│   │   │       └── check_updates.py
+│   │   ├── ne
+│   │   │   ├── __init__.py
+│   │   │   ├── belf_nebraska_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── dee_nebraska_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── psc_nebraska_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── publicworks_cityofomaha_org
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── sfm_nebraska_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_epa_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_lincoln_ne_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   └── www_nogcc_ne_gov
+│   │   │       ├── __init__.py
+│   │   │       └── check_updates.py
+│   │   ├── nh
+│   │   │   ├── __init__.py
+│   │   │   ├── onlineforms_nh_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_des_nh_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_energy_nh_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_epa_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   └── www4_des_state_nh_us
+│   │   │       ├── __init__.py
+│   │   │       └── check_updates.py
+│   │   ├── nj
+│   │   │   ├── __init__.py
+│   │   │   ├── dep_nj_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── njems_nj_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_epa_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   └── www_nj_gov
+│   │   │       ├── __init__.py
+│   │   │       └── check_updates.py
+│   │   ├── nm
+│   │   │   ├── __init__.py
+│   │   │   ├── www_cabq_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_emnrd_nm_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_env_nm_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_nmstatelands_org
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   └── www_prc_nm_gov
+│   │   │       ├── __init__.py
+│   │   │       └── check_updates.py
+│   │   ├── nv
+│   │   │   ├── __init__.py
+│   │   │   ├── lands_nv_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── minerals_nv_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── ndep_nv_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── puc_nv_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_clarkcountynv_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   └── www_nnph_org
+│   │   │       ├── __init__.py
+│   │   │       └── check_updates.py
+│   │   ├── ny
+│   │   │   ├── __init__.py
+│   │   │   ├── dec_ny_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── dps_ny_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   └── www_epa_gov
+│   │   │       ├── __init__.py
+│   │   │       └── check_updates.py
+│   │   ├── oh
+│   │   │   ├── __init__.py
+│   │   │   ├── epa_ohio_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── ohiodnr_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── puco_ohio_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_clevelandhealth_org
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   └── www_southwestohioair_org
+│   │   │       ├── __init__.py
+│   │   │       └── check_updates.py
+│   │   ├── ok
+│   │   │   ├── __init__.py
+│   │   │   ├── clo_ok_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── oklahoma_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   └── www_deq_ok_gov
+│   │   │       ├── __init__.py
+│   │   │       └── check_updates.py
+│   │   ├── or
+│   │   │   ├── __init__.py
+│   │   │   ├── www_epa_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_lrapa_or_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   └── www_oregon_gov
+│   │   │       ├── __init__.py
+│   │   │       └── check_updates.py
+│   │   ├── pa
+│   │   │   ├── __init__.py
+│   │   │   ├── www_alleghenycounty_us
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_pa_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_phila_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   └── www_puc_pa_gov
+│   │   │       ├── __init__.py
+│   │   │       └── check_updates.py
+│   │   ├── ri
+│   │   │   ├── __init__.py
+│   │   │   ├── dem_ri_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── ripuc_ri_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_crmc_ri_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   └── www_epa_gov
+│   │   │       ├── __init__.py
+│   │   │       └── check_updates.py
+│   │   ├── sc
+│   │   │   ├── __init__.py
+│   │   │   ├── des_sc_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── ors_sc_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_epa_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   └── www_scstatehouse_gov
+│   │   │       ├── __init__.py
+│   │   │       └── check_updates.py
+│   │   ├── sd
+│   │   │   ├── __init__.py
+│   │   │   ├── danr_sd_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── puc_sd_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   └── www_epa_gov
+│   │   │       ├── __init__.py
+│   │   │       └── check_updates.py
+│   │   ├── tn
+│   │   │   ├── __init__.py
+│   │   │   ├── primis_phmsa_dot_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_epa_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   └── www_tn_gov
+│   │   │       ├── __init__.py
+│   │   │       └── check_updates.py
+│   │   ├── tx
+│   │   │   ├── __init__.py
+│   │   │   ├── www_glo_texas_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_puc_texas_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_rrc_texas_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   └── www_tceq_texas_gov
+│   │   │       ├── __init__.py
+│   │   │       └── check_updates.py
+│   │   ├── ut
+│   │   │   ├── __init__.py
+│   │   │   ├── deq_utah_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── dpu_utah_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── ogm_utah_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   └── trustlands_utah_gov
+│   │   │       ├── __init__.py
+│   │   │       └── check_updates.py
+│   │   ├── va
+│   │   │   ├── __init__.py
+│   │   │   ├── energy_virginia_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_deq_virginia_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_energy_virginia_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_epa_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   └── www_scc_virginia_gov
+│   │   │       ├── __init__.py
+│   │   │       └── check_updates.py
+│   │   ├── vt
+│   │   │   ├── __init__.py
+│   │   │   ├── anronline_vermont_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── anrweb_vt_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── enb_vermont_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── publicservice_vermont_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   └── www_epa_gov
+│   │   │       ├── __init__.py
+│   │   │       └── check_updates.py
+│   │   ├── wa
+│   │   │   ├── __init__.py
+│   │   │   ├── bentoncleanair_org
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── ecology_wa_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── nwcleanairwa_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── pscleanair_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── spokanecleanair_org
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_epa_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_orcaa_org
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_swcleanair_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── www_utc_wa_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   └── www_yakimacleanair_org
+│   │   │       ├── __init__.py
+│   │   │       └── check_updates.py
+│   │   ├── wi
+│   │   │   ├── __init__.py
+│   │   │   ├── dnr_wisconsin_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── doa_wi_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── psc_wi_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   └── www_epa_gov
+│   │   │       ├── __init__.py
+│   │   │       └── check_updates.py
+│   │   ├── wv
+│   │   │   ├── __init__.py
+│   │   │   ├── dep_wv_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── ogcc_wv_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   ├── wvdnr_gov
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── check_updates.py
+│   │   │   └── www_psc_state_wv_us
+│   │   │       ├── __init__.py
+│   │   │       └── check_updates.py
+│   │   └── wy
+│   │       ├── __init__.py
+│   │       ├── deq_wyoming_gov
+│   │       │   ├── __init__.py
+│   │       │   └── check_updates.py
+│   │       ├── lands_wyo_gov
+│   │       │   ├── __init__.py
+│   │       │   └── check_updates.py
+│   │       ├── psc_wyo_gov
+│   │       │   ├── __init__.py
+│   │       │   └── check_updates.py
+│   │       └── wogcc_wyo_gov
+│   │           ├── __init__.py
+│   │           └── check_updates.py
+│   └── waterboards.ca.gov
+├── scripts
+│   ├── create_alaska_scraper_dirs.sh
+│   ├── generate_scrapers_from_json.py
+│   ├── import_issues.py
+│   ├── import_issues.sh
+│   ├── query
+│   │   ├── arb
+│   │   │   └── query_arb_lcfs_pathways.sh
+│   │   ├── ca_energy
+│   │   │   └── query_cec_power_plants.sh
+│   │   ├── calgem
+│   │   │   └── query_calgem_wells.sh
+│   │   ├── dog
+│   │   │   └── query_dog_oil_gas_data.sh
+│   │   └── waterboards
+│   │       └── query_waterboards_data.sh
+│   └── validate-openapi.sh
+├── services
+│   ├── __init__.py
+│   └── web_api
+│       ├── __init__.py
+│       ├── app.py
+│       ├── registry.py
+│       ├── requirements.txt
+│       ├── routes
+│       │   ├── __init__.py
+│       │   ├── metrics.py
+│       │   └── updates.py
+│       └── settings.py
+├── shared
+│   ├── http.py
+│   └── logging.py
+├── state-website-data
+│   └── state-website-data.json
+├── tests
+│   ├── test_openapi
+│   ├── test_openapi_contract.py
+│   ├── test_package_integrity.py
+│   ├── test_registry.py
+│   └── test_scrapers
+│       ├── test_ak_dec_alaska_gov_scraper.py
+│       ├── test_ak_dog_dnr_alaska_gov_scraper.py
+│       ├── test_ak_rca_alaska_gov_scraper.py
+│       ├── test_ak_www_commerce_alaska_gov_scraper.py
+│       ├── test_ak_www_epa_gov_scraper.py
+│       ├── test_al_adem_alabama_gov_scraper.py
+│       ├── test_al_apsc_alabama_gov_scraper.py
+│       ├── test_al_psc_alabama_gov_scraper.py
+│       ├── test_al_www_epa_gov_scraper.py
+│       ├── test_al_www_gsa_state_al_us_scraper.py
+│       ├── test_al_www_huntsvilleal_gov_scraper.py
+│       ├── test_al_www_jcdh_org_scraper.py
+│       ├── test_ar_apsc_arkansas_gov_scraper.py
+│       ├── test_ar_ee_arkansas_gov_scraper.py
+│       ├── test_ar_www_adeq_state_ar_us_scraper.py
+│       ├── test_ar_www_aogc_state_ar_us_scraper.py
+│       ├── test_ar_www_epa_gov_scraper.py
+│       ├── test_az_azcc_gov_scraper.py
+│       ├── test_az_azdeq_gov_scraper.py
+│       ├── test_az_azogcc_az_gov_scraper.py
+│       ├── test_az_land_az_gov_scraper.py
+│       ├── test_az_www_maricopa_gov_scraper.py
+│       ├── test_az_www_pima_gov_scraper.py
+│       ├── test_az_www_pinal_gov_scraper.py
+│       ├── test_ca_calepa_ca_gov_scraper.py
+│       ├── test_ca_osfm_fire_ca_gov_scraper.py
+│       ├── test_ca_ww2_arb_ca_gov_scraper.py
+│       ├── test_ca_www_airquality_org_scraper.py
+│       ├── test_ca_www_aqmd_gov_scraper.py
+│       ├── test_ca_www_baaqmd_gov_scraper.py
+│       ├── test_ca_www_conservation_ca_gov_scraper.py
+│       ├── test_ca_www_cpuc_ca_gov_scraper.py
+│       ├── test_ca_www_dir_ca_gov_scraper.py
+│       ├── test_ca_www_energy_ca_gov_scraper.py
+│       ├── test_ca_www_mbard_org_scraper.py
+│       ├── test_ca_www_mdaqmd_ca_gov_scraper.py
+│       ├── test_ca_www_ourair_org_scraper.py
+│       ├── test_ca_www_sdapcd_org_scraper.py
+│       ├── test_ca_www_slc_ca_gov_scraper.py
+│       ├── test_ca_www_valleyair_org_scraper.py
+│       ├── test_ca_www_vcapcd_org_scraper.py
+│       ├── test_ca_www_waterboards_ca_gov_scraper.py
+│       ├── test_co_cdphe_colorado_gov_scraper.py
+│       ├── test_co_ecmc_state_co_us_scraper.py
+│       ├── test_co_puc_colorado_gov_scraper.py
+│       ├── test_co_slb_colorado_gov_scraper.py
+│       ├── test_ct_filings_deep_ct_gov_scraper.py
+│       ├── test_ct_portal_ct_gov_scraper.py
+│       ├── test_ct_www_epa_gov_scraper.py
+│       ├── test_de_den_dnrec_delaware_gov_scraper.py
+│       ├── test_de_depsc_delaware_gov_scraper.py
+│       ├── test_de_dnrec_delaware_gov_scraper.py
+│       ├── test_de_www_epa_gov_scraper.py
+│       ├── test_ferc_scraper.py
+│       ├── test_fl_floridadep_gov_scraper.py
+│       ├── test_fl_prodenv_dep_state_fl_us_scraper.py
+│       ├── test_fl_www_epa_gov_scraper.py
+│       ├── test_ga_epd_georgia_gov_scraper.py
+│       ├── test_ga_gspc_georgia_gov_scraper.py
+│       ├── test_ga_law_justia_com_scraper.py
+│       ├── test_ga_psc_ga_gov_scraper.py
+│       ├── test_ga_rules_sos_ga_gov_scraper.py
+│       ├── test_ga_rules_sos_state_ga_us_scraper.py
+│       ├── test_hi_health_hawaii_gov_scraper.py
+│       ├── test_hi_planning_hawaii_gov_scraper.py
+│       ├── test_hi_www_epa_gov_scraper.py
+│       ├── test_ia_iuc_iowa_gov_scraper.py
+│       ├── test_ia_programs_iowadnr_gov_scraper.py
+│       ├── test_ia_www_epa_gov_scraper.py
+│       ├── test_ia_www_iowadnr_gov_scraper.py
+│       ├── test_ia_www_linncountyiowa_gov_scraper.py
+│       ├── test_ia_www_polkcountyiowa_gov_scraper.py
+│       ├── test_id_ogcc_idaho_gov_scraper.py
+│       ├── test_id_puc_idaho_gov_scraper.py
+│       ├── test_id_www_deq_idaho_gov_scraper.py
+│       ├── test_id_www_epa_gov_scraper.py
+│       ├── test_id_www_idl_idaho_gov_scraper.py
+│       ├── test_il_dnr_illinois_gov_scraper.py
+│       ├── test_il_epa_illinois_gov_scraper.py
+│       ├── test_il_www_epa_gov_scraper.py
+│       ├── test_il_www_ilga_gov_scraper.py
+│       ├── test_il_www_illinois_gov_scraper.py
+│       ├── test_in_www_epa_gov_scraper.py
+│       ├── test_in_www_in_gov_scraper.py
+│       ├── test_ks_www_epa_gov_scraper.py
+│       ├── test_ks_www_kcc_ks_gov_scraper.py
+│       ├── test_ks_www_kdhe_ks_gov_scraper.py
+│       ├── test_ks_www_wycokck_org_scraper.py
+│       ├── test_ky_eec_ky_gov_scraper.py
+│       ├── test_ky_louisvilleky_gov_scraper.py
+│       ├── test_ky_psc_ky_gov_scraper.py
+│       ├── test_ky_www_epa_gov_scraper.py
+│       ├── test_la_deq_louisiana_gov_scraper.py
+│       ├── test_la_www_dnr_louisiana_gov_scraper.py
+│       ├── test_ma_www_epa_gov_scraper.py
+│       ├── test_ma_www_mass_gov_scraper.py
+│       ├── test_md_dnr_maryland_gov_scraper.py
+│       ├── test_md_mde_maryland_gov_scraper.py
+│       ├── test_md_mdedataviewer_mde_state_md_us_scraper.py
+│       ├── test_md_www_epa_gov_scraper.py
+│       ├── test_md_www_psc_state_md_us_scraper.py
+│       ├── test_me_www_epa_gov_scraper.py
+│       ├── test_me_www_maine_gov_scraper.py
+│       ├── test_mi_www_deq_state_mi_us_scraper.py
+│       ├── test_mi_www_egle_state_mi_us_scraper.py
+│       ├── test_mi_www_epa_gov_scraper.py
+│       ├── test_mi_www_michigan_gov_scraper.py
+│       ├── test_mn_dps_mn_gov_scraper.py
+│       ├── test_mn_www_dnr_state_mn_us_scraper.py
+│       ├── test_mn_www_epa_gov_scraper.py
+│       ├── test_mn_www_pca_state_mn_us_scraper.py
+│       ├── test_mo_dnr_mo_gov_scraper.py
+│       ├── test_mo_psc_mo_gov_scraper.py
+│       ├── test_mo_stlouiscountymo_gov_scraper.py
+│       ├── test_mo_www_epa_gov_scraper.py
+│       ├── test_mo_www_kcmo_gov_scraper.py
+│       ├── test_ms_opcgis_deq_state_ms_us_scraper.py
+│       ├── test_ms_www_epa_gov_scraper.py
+│       ├── test_ms_www_mdeq_ms_gov_scraper.py
+│       ├── test_ms_www_ogb_state_ms_us_scraper.py
+│       ├── test_ms_www_psc_ms_gov_scraper.py
+│       ├── test_mt_bogapps_dnrc_mt_gov_scraper.py
+│       ├── test_mt_deq_mt_gov_scraper.py
+│       ├── test_mt_dnrc_mt_gov_scraper.py
+│       ├── test_mt_psc_mt_gov_scraper.py
+│       ├── test_mt_www_epa_gov_scraper.py
+│       ├── test_nc_airquality_mecknc_gov_scraper.py
+│       ├── test_nc_www_deq_nc_gov_scraper.py
+│       ├── test_nc_www_epa_gov_scraper.py
+│       ├── test_nc_www_forsyth_cc_scraper.py
+│       ├── test_nc_www_ncuc_gov_scraper.py
+│       ├── test_nd_deq_nd_gov_scraper.py
+│       ├── test_nd_psc_nd_gov_scraper.py
+│       ├── test_nd_www_dmr_nd_gov_scraper.py
+│       ├── test_nd_www_land_nd_gov_scraper.py
+│       ├── test_ne_belf_nebraska_gov_scraper.py
+│       ├── test_ne_dee_nebraska_gov_scraper.py
+│       ├── test_ne_psc_nebraska_gov_scraper.py
+│       ├── test_ne_publicworks_cityofomaha_org_scraper.py
+│       ├── test_ne_sfm_nebraska_gov_scraper.py
+│       ├── test_ne_www_epa_gov_scraper.py
+│       ├── test_ne_www_lincoln_ne_gov_scraper.py
+│       ├── test_ne_www_nogcc_ne_gov_scraper.py
+│       ├── test_nh_onlineforms_nh_gov_scraper.py
+│       ├── test_nh_www_des_nh_gov_scraper.py
+│       ├── test_nh_www_energy_nh_gov_scraper.py
+│       ├── test_nh_www_epa_gov_scraper.py
+│       ├── test_nh_www4_des_state_nh_us_scraper.py
+│       ├── test_nj_dep_nj_gov_scraper.py
+│       ├── test_nj_njems_nj_gov_scraper.py
+│       ├── test_nj_www_epa_gov_scraper.py
+│       ├── test_nj_www_nj_gov_scraper.py
+│       ├── test_nm_www_cabq_gov_scraper.py
+│       ├── test_nm_www_emnrd_nm_gov_scraper.py
+│       ├── test_nm_www_env_nm_gov_scraper.py
+│       ├── test_nm_www_nmstatelands_org_scraper.py
+│       ├── test_nm_www_prc_nm_gov_scraper.py
+│       ├── test_nv_lands_nv_gov_scraper.py
+│       ├── test_nv_minerals_nv_gov_scraper.py
+│       ├── test_nv_ndep_nv_gov_scraper.py
+│       ├── test_nv_puc_nv_gov_scraper.py
+│       ├── test_nv_www_clarkcountynv_gov_scraper.py
+│       ├── test_nv_www_nnph_org_scraper.py
+│       ├── test_ny_dec_ny_gov_scraper.py
+│       ├── test_ny_dps_ny_gov_scraper.py
+│       ├── test_ny_www_epa_gov_scraper.py
+│       ├── test_oh_epa_ohio_gov_scraper.py
+│       ├── test_oh_ohiodnr_gov_scraper.py
+│       ├── test_oh_puco_ohio_gov_scraper.py
+│       ├── test_oh_www_clevelandhealth_org_scraper.py
+│       ├── test_oh_www_southwestohioair_org_scraper.py
+│       ├── test_ok_clo_ok_gov_scraper.py
+│       ├── test_ok_oklahoma_gov_scraper.py
+│       ├── test_ok_www_deq_ok_gov_scraper.py
+│       ├── test_or_www_epa_gov_scraper.py
+│       ├── test_or_www_lrapa_or_gov_scraper.py
+│       ├── test_or_www_oregon_gov_scraper.py
+│       ├── test_pa_www_alleghenycounty_us_scraper.py
+│       ├── test_pa_www_pa_gov_scraper.py
+│       ├── test_pa_www_phila_gov_scraper.py
+│       ├── test_pa_www_puc_pa_gov_scraper.py
+│       ├── test_ri_dem_ri_gov_scraper.py
+│       ├── test_ri_ripuc_ri_gov_scraper.py
+│       ├── test_ri_www_crmc_ri_gov_scraper.py
+│       ├── test_ri_www_epa_gov_scraper.py
+│       ├── test_sc_des_sc_gov_scraper.py
+│       ├── test_sc_ors_sc_gov_scraper.py
+│       ├── test_sc_www_epa_gov_scraper.py
+│       ├── test_sc_www_scstatehouse_gov_scraper.py
+│       ├── test_sd_danr_sd_gov_scraper.py
+│       ├── test_sd_puc_sd_gov_scraper.py
+│       ├── test_sd_www_epa_gov_scraper.py
+│       ├── test_tn_primis_phmsa_dot_gov_scraper.py
+│       ├── test_tn_www_epa_gov_scraper.py
+│       ├── test_tn_www_tn_gov_scraper.py
+│       ├── test_tx_www_glo_texas_gov_scraper.py
+│       ├── test_tx_www_puc_texas_gov_scraper.py
+│       ├── test_tx_www_rrc_texas_gov_scraper.py
+│       ├── test_tx_www_tceq_texas_gov_scraper.py
+│       ├── test_ut_deq_utah_gov_scraper.py
+│       ├── test_ut_dpu_utah_gov_scraper.py
+│       ├── test_ut_ogm_utah_gov_scraper.py
+│       ├── test_ut_trustlands_utah_gov_scraper.py
+│       ├── test_va_energy_virginia_gov_scraper.py
+│       ├── test_va_www_deq_virginia_gov_scraper.py
+│       ├── test_va_www_energy_virginia_gov_scraper.py
+│       ├── test_va_www_epa_gov_scraper.py
+│       ├── test_va_www_scc_virginia_gov_scraper.py
+│       ├── test_vt_anronline_vermont_gov_scraper.py
+│       ├── test_vt_anrweb_vt_gov_scraper.py
+│       ├── test_vt_enb_vermont_gov_scraper.py
+│       ├── test_vt_publicservice_vermont_gov_scraper.py
+│       ├── test_vt_www_epa_gov_scraper.py
+│       ├── test_wa_bentoncleanair_org_scraper.py
+│       ├── test_wa_ecology_wa_gov_scraper.py
+│       ├── test_wa_nwcleanairwa_gov_scraper.py
+│       ├── test_wa_pscleanair_gov_scraper.py
+│       ├── test_wa_spokanecleanair_org_scraper.py
+│       ├── test_wa_www_epa_gov_scraper.py
+│       ├── test_wa_www_orcaa_org_scraper.py
+│       ├── test_wa_www_swcleanair_gov_scraper.py
+│       ├── test_wa_www_utc_wa_gov_scraper.py
+│       ├── test_wa_www_yakimacleanair_org_scraper.py
+│       ├── test_wi_dnr_wisconsin_gov_scraper.py
+│       ├── test_wi_doa_wi_gov_scraper.py
+│       ├── test_wi_psc_wi_gov_scraper.py
+│       ├── test_wi_www_epa_gov_scraper.py
+│       ├── test_wv_dep_wv_gov_scraper.py
+│       ├── test_wv_ogcc_wv_gov_scraper.py
+│       ├── test_wv_wvdnr_gov_scraper.py
+│       ├── test_wv_www_psc_state_wv_us_scraper.py
+│       ├── test_wy_deq_wyoming_gov_scraper.py
+│       ├── test_wy_lands_wyo_gov_scraper.py
+│       ├── test_wy_psc_wyo_gov_scraper.py
+│       └── test_wy_wogcc_wyo_gov_scraper.py
+└── tree_full.txt
+
+330 directories, 832 files
