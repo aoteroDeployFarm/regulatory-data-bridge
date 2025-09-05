@@ -1,0 +1,166 @@
+{
+  "issues": [
+    {
+      "title": "Epic: Fire Codes Wave A (11 states)",
+      "body": "Deliver public-source coverage for NFPA 30 & IFC in Wave A states (OK, LA, NM, CO, ND, PA, OH, WY, WV, UT, AZ). Scope: discover public adoption/notice/rule pages, add to config, generate scrapers, validate extraction, and prep for RAG.\\n\\n**Notes**\\n- Only public, non-paywalled sources (state fire marshal, admin code/rules, state register, ICC-hosted adoption pages, municipal notices).\\n- Avoid scraping paywalled code text; focus on notices, adopted-by-reference rules, errata, and change logs.\\n- Tag PRs/issues with `area:fire-codes` and `wave:A`.\\n\\n**Deliverables**\\n- URLs added to `state-website-data/state-website-data.json` for each state.\\n- Scraper files generated in `scrapers/state/<code>/...`.\\n- Spot-validated extraction (`updated`, `new_content`, `meta`) for 2–3 sources/state.\\n- Follow-ups opened for tricky/dynamic sites.\\n",
+      "labels": ["area:fire-codes", "priority:P1", "batch:fire-codes-waveA"],
+      "milestone": "Fire Codes Wave A"
+    },
+
+    {
+      "title": "Wave A – Oklahoma: Research public fire-code sources (NFPA 30 & IFC)",
+      "body": "**Find public sources** (no paywalled code text):\\n- OK State Fire Marshal / Fire Prevention adoption & notices\\n- IFC adoption references (state building code council if applicable)\\n- Admin Code/Rules that adopt NFPA 30 by reference\\n- State Register / rulemaking notices\\n- (Optional) 1 city or county adoption page\\n\\n**Add** up to 2–5 URLs to `state-website-data.json` under \"Oklahoma\" with brief notes if needed.\\n\\n**Search helpers**\\n- `site:.gov Oklahoma \"State Fire Marshal\" \"fire code\" adoption`\\n- `site:.gov Oklahoma \"International Fire Code\" adoption`\\n- `site:.gov Oklahoma \"NFPA 30\" \"incorporated by reference\"`\\n- `site:.gov Oklahoma register fire code`\\n\\n**Acceptance**\\n- URLs collected and ready for generator.\\n",
+      "labels": ["area:fire-codes", "wave:A", "type:research", "priority:P1", "batch:fire-codes-waveA"],
+      "milestone": "Fire Codes Wave A"
+    },
+    {
+      "title": "Wave A – Oklahoma: Config + generate scrapers + validate extraction",
+      "body": "**Do**\\n- Add URLs to `state-website-data/state-website-data.json` for OK.\\n- Run generator with `--overwrite`.\\n- Spot-run 2–3 scrapers (incl. at least one PDF if present).\\n- Adjust selectors if needed (e.g., `main,article,.content`).\\n- Commit results.\\n\\n**Acceptance**\\n- OK scrapers present and extraction returns sensible `new_content`/`meta`.\\n",
+      "labels": ["area:fire-codes", "wave:A", "type:scraper", "priority:P1", "batch:fire-codes-waveA"],
+      "milestone": "Fire Codes Wave A"
+    },
+
+    {
+      "title": "Wave A – Louisiana: Research public fire-code sources (NFPA 30 & IFC)",
+      "body": "Same checklist as Oklahoma; focus on LA State Fire Marshal, LAC rules adopting NFPA 30, and state register notices. Add 2–5 URLs under \"Louisiana\".",
+      "labels": ["area:fire-codes", "wave:A", "type:research", "priority:P1", "batch:fire-codes-waveA"],
+      "milestone": "Fire Codes Wave A"
+    },
+    {
+      "title": "Wave A – Louisiana: Config + generate scrapers + validate extraction",
+      "body": "Add LA URLs → generate scrapers → spot-run/validate → fix selectors if needed → commit.",
+      "labels": ["area:fire-codes", "wave:A", "type:scraper", "priority:P1", "batch:fire-codes-waveA"],
+      "milestone": "Fire Codes Wave A"
+    },
+
+    {
+      "title": "Wave A – New Mexico: Research public fire-code sources (NFPA 30 & IFC)",
+      "body": "Find NM State Fire Marshal/Fire Prevention pages, NFPA 30 adopted-by-reference rules, state register notices, IFC adoption references. Add 2–5 URLs.",
+      "labels": ["area:fire-codes", "wave:A", "type:research", "priority:P1", "batch:fire-codes-waveA"],
+      "milestone": "Fire Codes Wave A"
+    },
+    {
+      "title": "Wave A – New Mexico: Config + generate scrapers + validate extraction",
+      "body": "Add NM URLs → generator → spot-run/validate → adjust selectors → commit.",
+      "labels": ["area:fire-codes", "wave:A", "type:scraper", "priority:P1", "batch:fire-codes-waveA"],
+      "milestone": "Fire Codes Wave A"
+    },
+
+    {
+      "title": "Wave A – Colorado: Research public fire-code sources (NFPA 30 & IFC)",
+      "body": "Find CO Division of Fire Prevention & Control pages, Admin Code references to NFPA 30, state rulemaking notices, IFC adoption. Add 2–5 URLs.",
+      "labels": ["area:fire-codes", "wave:A", "type:research", "priority:P1", "batch:fire-codes-waveA"],
+      "milestone": "Fire Codes Wave A"
+    },
+    {
+      "title": "Wave A – Colorado: Config + generate scrapers + validate extraction",
+      "body": "Add CO URLs → generator → spot-run/validate → adjust selectors → commit.",
+      "labels": ["area:fire-codes", "wave:A", "type:scraper", "priority:P1", "batch:fire-codes-waveA"],
+      "milestone": "Fire Codes Wave A"
+    },
+
+    {
+      "title": "Wave A – North Dakota: Research public fire-code sources (NFPA 30 & IFC)",
+      "body": "Find ND public pages (fire marshal/administrative code/register) covering fire code adoption and NFPA 30. Add 2–5 URLs.",
+      "labels": ["area:fire-codes", "wave:A", "type:research", "priority:P1", "batch:fire-codes-waveA"],
+      "milestone": "Fire Codes Wave A"
+    },
+    {
+      "title": "Wave A – North Dakota: Config + generate scrapers + validate extraction",
+      "body": "Add ND URLs → generator → spot-run/validate → adjust selectors → commit.",
+      "labels": ["area:fire-codes", "wave:A", "type:scraper", "priority:P1", "batch:fire-codes-waveA"],
+      "milestone": "Fire Codes Wave A"
+    },
+
+    {
+      "title": "Wave A – Pennsylvania: Research public fire-code sources (NFPA 30 & IFC)",
+      "body": "Find PA public sources: state fire commissioner/PSP Fire Marshal, PA Code/ Bulletin entries adopting NFPA 30/IFC, rulemaking notices. Add 2–5 URLs.",
+      "labels": ["area:fire-codes", "wave:A", "type:research", "priority:P1", "batch:fire-codes-waveA"],
+      "milestone": "Fire Codes Wave A"
+    },
+    {
+      "title": "Wave A – Pennsylvania: Config + generate scrapers + validate extraction",
+      "body": "Add PA URLs → generator → spot-run/validate → adjust selectors → commit.",
+      "labels": ["area:fire-codes", "wave:A", "type:scraper", "priority:P1", "batch:fire-codes-waveA"],
+      "milestone": "Fire Codes Wave A"
+    },
+
+    {
+      "title": "Wave A – Ohio: Research public fire-code sources (NFPA 30 & IFC)",
+      "body": "Find OH State Fire Marshal (Commerce) adoption pages, Ohio Admin Code adopting IFC/NFPA 30, register notices. Add 2–5 URLs.",
+      "labels": ["area:fire-codes", "wave:A", "type:research", "priority:P1", "batch:fire-codes-waveA"],
+      "milestone": "Fire Codes Wave A"
+    },
+    {
+      "title": "Wave A – Ohio: Config + generate scrapers + validate extraction",
+      "body": "Add OH URLs → generator → spot-run/validate → adjust selectors → commit.",
+      "labels": ["area:fire-codes", "wave:A", "type:scraper", "priority:P1", "batch:fire-codes-waveA"],
+      "milestone": "Fire Codes Wave A"
+    },
+
+    {
+      "title": "Wave A – Wyoming: Research public fire-code sources (NFPA 30 & IFC)",
+      "body": "Find WY State Fire Marshal/Dept of Fire Prevention pages, IFC adoption references, adopted-by-reference NFPA 30 rules, register notices. Add 2–5 URLs.",
+      "labels": ["area:fire-codes", "wave:A", "type:research", "priority:P1", "batch:fire-codes-waveA"],
+      "milestone": "Fire Codes Wave A"
+    },
+    {
+      "title": "Wave A – Wyoming: Config + generate scrapers + validate extraction",
+      "body": "Add WY URLs → generator → spot-run/validate → adjust selectors → commit.",
+      "labels": ["area:fire-codes", "wave:A", "type:scraper", "priority:P1", "batch:fire-codes-waveA"],
+      "milestone": "Fire Codes Wave A"
+    },
+
+    {
+      "title": "Wave A – West Virginia: Research public fire-code sources (NFPA 30 & IFC)",
+      "body": "Find WV State Fire Marshal public pages, WV Code of State Rules with NFPA 30 references, register notices, IFC adoption. Add 2–5 URLs.",
+      "labels": ["area:fire-codes", "wave:A", "type:research", "priority:P1", "batch:fire-codes-waveA"],
+      "milestone": "Fire Codes Wave A"
+    },
+    {
+      "title": "Wave A – West Virginia: Config + generate scrapers + validate extraction",
+      "body": "Add WV URLs → generator → spot-run/validate → adjust selectors → commit.",
+      "labels": ["area:fire-codes", "wave:A", "type:scraper", "priority:P1", "batch:fire-codes-waveA"],
+      "milestone": "Fire Codes Wave A"
+    },
+
+    {
+      "title": "Wave A – Utah: Research public fire-code sources (NFPA 30 & IFC)",
+      "body": "Find UT State Fire Marshal (DPS) adoption/notice pages, Admin Code adopting NFPA 30, register/rule notices, IFC adoption. Add 2–5 URLs.",
+      "labels": ["area:fire-codes", "wave:A", "type:research", "priority:P1", "batch:fire-codes-waveA"],
+      "milestone": "Fire Codes Wave A"
+    },
+    {
+      "title": "Wave A – Utah: Config + generate scrapers + validate extraction",
+      "body": "Add UT URLs → generator → spot-run/validate → adjust selectors → commit.",
+      "labels": ["area:fire-codes", "wave:A", "type:scraper", "priority:P1", "batch:fire-codes-waveA"],
+      "milestone": "Fire Codes Wave A"
+    },
+
+    {
+      "title": "Wave A – Arizona: Research public fire-code sources (NFPA 30 & IFC)",
+      "body": "Find AZ State Fire Marshal public pages, Admin Code with NFPA 30 by reference, register notices, IFC adoption references. Add 2–5 URLs.",
+      "labels": ["area:fire-codes", "wave:A", "type:research", "priority:P1", "batch:fire-codes-waveA"],
+      "milestone": "Fire Codes Wave A"
+    },
+    {
+      "title": "Wave A – Arizona: Config + generate scrapers + validate extraction",
+      "body": "Add AZ URLs → generator → spot-run/validate → adjust selectors → commit.",
+      "labels": ["area:fire-codes", "wave:A", "type:scraper", "priority:P1", "batch:fire-codes-waveA"],
+      "milestone": "Fire Codes Wave A"
+    },
+
+    {
+      "title": "RAG prep: Prompt templates + collection for Wave A",
+      "body": "**Do**\\n- Create `fire-codes` collection in the indexer.\\n- Add citation-aware chunking (capture NFPA/IFC section refs when present).\\n- Draft Q&A + summary prompts for jurisdiction-specific fire-code changes.\\n\\n**Acceptance**\\n- Minimal end-to-end demo: ask a Wave A question → see snippets + links.",
+      "labels": ["area:fire-codes", "wave:A", "type:rag", "priority:P2", "batch:fire-codes-waveA"],
+      "milestone": "Fire Codes Wave A"
+    },
+    {
+      "title": "Notifications: Summaries + severity for Wave A",
+      "body": "**Do**\\n- Add concise change summaries for updated Wave A sources.\\n- Add a simple severity/impact heuristic (e.g., storage capacity, occupancy, hazardous class keywords).\\n- Wire Slack/webhook with links to source + diff summary.\\n\\n**Acceptance**\\n- Sample alert produced from at least 1 updated source.",
+      "labels": ["area:fire-codes", "wave:A", "type:rag", "priority:P2", "batch:fire-codes-waveA"],
+      "milestone": "Fire Codes Wave A"
+    }
+  ]
+}

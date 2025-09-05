@@ -15,10 +15,16 @@ except Exception:  # pragma: no cover
 from bs4 import BeautifulSoup
 
 TARGET_URL = "https://www.leg.state.fl.us/Statutes/index.cfm?App_mode=Display_Statute&URL=0600-0699%2F0633%2FSections%2F0633.202.html"
-CACHE_DIR = Path(__file__).parent / ".cache"
+from pathlib import Path
+
+# Per-scraper cache directory:
+# scrapers/state/<code>/.cache/<scraper_stem>/
+CACHE_DIR = Path(__file__).parent / ".cache" / Path(__file__).stem
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
 SIGNATURE_FILE = CACHE_DIR / "last_signature.json"
-CONTENT_FILE = CACHE_DIR / "last_content.txt"
+CONTENT_FILE   = CACHE_DIR / "last_content.txt"
+
 
 DEFAULT_SELECTOR = 'main, article, section, h1, h2, h3'
 
