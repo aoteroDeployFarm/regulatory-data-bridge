@@ -1,5 +1,5 @@
 # tests/test_registry.py
-from services.web_api.registry import discover
+from app.registry import discover
 
 def test_discover_scrapers_imports():
     reg = discover()

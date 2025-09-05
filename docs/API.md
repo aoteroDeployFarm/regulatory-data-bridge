@@ -278,7 +278,7 @@ Example error payload:
 
 ## Settings & Env Vars
 
-These are provided by `services/web_api/settings.py` (Pydantic Settings):
+These are provided by `settings.py` (Pydantic Settings):
 
 | Env Var            | Default | Description                                 |
 | ------------------ | ------- | ------------------------------------------- |
