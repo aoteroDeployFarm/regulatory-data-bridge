@@ -1,13 +1,63 @@
-# Python
+# ---- OS / Editor ----
+.DS_Store
+Thumbs.db
+*.swp
+.vscode/
+.idea/
+
+# ---- Python ----
 __pycache__/
-*.pyc
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+.eggs/
+.build/
+dist/
+build/
+.mypy_cache/
+.pytype/
+.pytest_cache/
+.coverage*
+coverage/
 .venv/
-.env
+venv/
 
-# Scraper caches
-scrapers/**/.cache/
-.data_cache/
-
-# Node / docs (if any)
+# ---- Node/Web ----
 node_modules/
-site/
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.next/
+.out/
+.expo/
+.vercel/
+.parcel-cache/
+
+# ---- Env files (keep only examples) ----
+.env
+.env.*
+!.env.example
+!.env.local.example
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.local.example
+
+# ---- App data ----
+.cache/
+**/.cache/
+data/tmp/
+logs/
+*.log
+
+# ---- Scraper artifacts ----
+scrapers/**/.cache/
+downloads/
+tmp/
+
+# ---- Docker/Compose ----
+docker/*.log
+docker/*.env
+.docker/

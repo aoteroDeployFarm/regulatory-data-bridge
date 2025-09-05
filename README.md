@@ -1,317 +1,283 @@
 # Regulatory Data Bridge
 
-Aggregate regulatory data from public APIs and high-signal web pages. This repo includes:
+> Scrape regulatory sources (HTML & PDF), detect changes, extract content, and power Q\&A + alerts with Gemini/GPT.
 
-* **OpenAPI specs** for federal/state data sources
-* **Scrapers** for sites without APIs (with auto-discovery & caching)
-* A **FastAPI** microservice to run scrapers and expose results
-* **CI** to test scrapers and lint specs
-* **Generator scripts** to scaffold lots of state scrapers from a JSON list
+[![FastAPI](https://img.shields.io/badge/FastAPI-ready-009688.svg)]()
+[![Python](https://img.shields.io/badge/Python-3.11+-3776AB.svg)]()
+[![License](https://img.shields.io/badge/license-MIT-lightgrey.svg)]()
 
 ## Table of Contents
 
 - [Regulatory Data Bridge](#regulatory-data-bridge)
   - [Table of Contents](#table-of-contents)
+  - [Overview](#overview)
+  - [Features](#features)
+  - [Architecture](#architecture)
+  - [Project Structure](#project-structure)
   - [Quick Start](#quick-start)
-  - [Repository Layout](#repository-layout)
-  - [Run the API](#run-the-api)
-  - [cURL \& Endpoints](#curl--endpoints)
-  - [Scraper Discovery (How it works)](#scraper-discovery-how-it-works)
-  - [Generate Scrapers in Bulk](#generate-scrapers-in-bulk)
+    - [Requirements](#requirements)
+    - [Setup](#setup)
+    - [Environment](#environment)
+  - [Running the API](#running-the-api)
+  - [HTTP Endpoints](#http-endpoints)
+  - [Scraper Generation](#scraper-generation)
+  - [AI Processing \& RAG](#ai-processing--rag)
+  - [Notifications](#notifications)
+  - [GitHub Issues Import (Python)](#github-issues-import-python)
   - [Testing](#testing)
-  - [CI \& Automation](#ci--automation)
-  - [Docker](#docker)
-  - [Configuration](#configuration)
-  - [Troubleshooting](#troubleshooting)
+  - [Deployment](#deployment)
+  - [Roadmap](#roadmap)
   - [License](#license)
+    - [Housekeeping](#housekeeping)
 
 ---
 
-## Quick Start
+## Overview
 
-> Requires **Python 3.11+**.
+Regulatory Data Bridge monitors agency sources, detects updates, extracts content (HTML & PDF), and makes it queryable via a FastAPI endpoint with retrieval-augmented generation (RAG). It supports both **Gemini** and **OpenAI** providers, shared schema across scrapers, and alerting (Slack & push).
 
-```bash
-# from repo root
-python -m venv .venv
-source .venv/bin/activate
+## Features
 
-# install service + dev deps
-pip install -r services/web_api/requirements.txt -r requirements-dev.txt
-# If you see pydantic BaseSettings errors, also:
-pip install pydantic>=2.7 pydantic-settings>=2.3
+* ✅ Unified scraper output schema (`url`, `updated`, `new_content`, `old_content`, `meta`)
+* ✅ HTML & PDF templates with caching and content extraction
+* ✅ FastAPI service with `/ask`, `/updates`, `/process/{id}`, `/notifications/push/register`
+* ✅ Typed configuration via **Pydantic v2** (`settings.py`) + `.env` support
+* ✅ GitHub issues bulk import with a **Python** script (no bash/gh required)
+* 🧠 AI post-processing hooks (summaries, entities, doc class, risk score)
+* 🔎 RAG-ready: chunking + embeddings (pgvector friendly)
+* 🔔 Slack & push notifications (Expo/FCM/APNs adapters planned)
 
-# run tests
-pytest -q
+## Architecture
 
-# run API (factory pattern)
-uvicorn services.web_api.app:create_app --factory --reload
-# → http://127.0.0.1:8000/health
+```
+Scrapers (HTML/PDF)  -->  Updates Store  -->  AI Post-Processing  -->  RAG Index
+        |                         |                |                     |
+        +-- signature/content ----+                +-- summaries/entities+
+                                                             |
+                                                        FastAPI /ask
 ```
 
-Helpful docs:
-
-* API guide: `docs/API.md`
-* cURL recipes: `docs/curl-scrapers.md`
-
----
-
-## Repository Layout
+## Project Structure
 
 ```
 .
-├── openapi/                     # OpenAPI 3.1 specs (federal + states + internal)
-│   ├── federal/…
-│   ├── states/…
-│   └── internal/scrapedUpdates.yaml
-├── scrapers/                    # Website scrapers
-│   ├── _base.py                 # shared helpers (diffing, caching)
-│   ├── federal/<agency>/check_updates.py
-│   └── state/<xx>/<domain_slug>/check_updates.py
-├── services/
-│   └── web_api/                 # FastAPI service
-│       ├── app.py               # create_app() + lifespan
-│       ├── registry.py          # auto-discovers scrapers
-│       ├── routes/
-│       │   ├── updates.py       # /scrapers, /check-site-update, /batch-check
-│       │   └── metrics.py       # /metrics
-│       ├── settings.py          # pydantic-settings config
-│       └── requirements.txt
-├── shared/
-│   ├── http.py                  # shared httpx client + retry/backoff
-│   └── logging.py               # JSON logging setup
+├── app/
+│   ├── main.py                      # FastAPI app, CORS, health, routers
+│   └── routers/
+│       ├── ask.py                   # POST /ask
+│       ├── updates.py               # GET /updates
+│       ├── process.py               # POST /process/{update_id}
+│       └── notifications.py         # POST /notifications/push/register
 ├── scripts/
-│   ├── generate_scrapers_from_json.py   # bulk scaffold from state JSON
-│   └── query/*                   # sample scripts for API sources
-├── state-website-data/state-website-data.json
-├── tests/
-│   ├── test_scrapers/*           # import/run smoke tests per scraper
-│   └── test_package_integrity.py # sanity (no legacy paths, all importable)
-├── .github/workflows/            # CI & scheduled runs
-├── docker-compose.yml
-├── Dockerfile
-├── pyproject.toml                # pytest config (paths, -q)
-├── requirements-dev.txt
-└── README.md
+│   ├── import_issues.py             # Python GitHub bulk issue importer
+│   └── generate_scrapers_from_json.py  # Scraper generator (HTML/PDF)
+├── scrapers/                        # Generated scrapers live here
+├── data/
+│   └── issues.json                  # Issues payload for importer script
+├── settings.py                      # Pydantic v2 typed config
+├── .env.example                     # Sample environment config
+├── README.md
+└── .gitignore
 ```
 
-> Note: A couple legacy top-level folders like `scrapers/conservation.ca.gov/` may exist. They’re ignored unless they contain `__init__.py`. New scrapers should live under `scrapers/state/<xx>/<domain_slug>/`.
+## Quick Start
 
----
+### Requirements
 
-## Run the API
+* Python **3.11+**
+* (Optional) Postgres + pgvector, Redis
 
-Local dev (recommended):
+### Setup
 
 ```bash
-uvicorn services.web_api.app:create_app --factory --reload
+python -m venv .venv
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
+pip install -U pip
+
+# API dependencies
+pip install fastapi uvicorn pydantic pydantic-settings requests
+
+# Scraper deps
+pip install beautifulsoup4 pypdf pdfminer.six
+
+# (Optional) DB/Vector/Workers later:
+# pip install "psycopg[binary]" sqlalchemy pgvector tenacity celery redis
 ```
 
-Endpoints:
-
-* `GET /health` – service health + scraper count
-* `GET /scrapers` – list registered scraper anchors (keys)
-* `GET /check-site-update?url=<absolute URL>` – run best-match scraper
-* `GET /batch-check` – run all scrapers
-* `GET /metrics` – simple counters (runs/updates/errors)
-
-See **`docs/API.md`** for full response shapes and examples.
-
----
-
-## cURL & Endpoints
-
-Quick examples:
+### Environment
 
 ```bash
-export API_URL="http://127.0.0.1:8000"
-
-# list scrapers
-curl -s "$API_URL/scrapers" | jq
-
-# run one
-curl -s --get "$API_URL/check-site-update" \
-  --data-urlencode "url=https://www.conservation.ca.gov/calgem" | jq
-
-# batch
-curl -s "$API_URL/batch-check" | jq '.updated,.errors'
+cp .env.example .env
+# Edit .env – set LLM_PROVIDER + matching API key, DB URLs, etc.
 ```
 
-More recipes: **`docs/curl-scrapers.md`**
-
----
-
-## Scraper Discovery (How it works)
-
-The service auto-registers scrapers at startup:
-
-* It walks `scrapers/**/check_updates.py`.
-* Each module must export:
-
-  * `TARGET_URL: str`
-  * `check_for_update() -> dict` (returns at least `{"url": ..., "updated": bool}`)
-  * (HTML scrapers typically also define `fetch_html()` and use `_base.check_updated()`.)
-
-Router behavior:
-
-* `/scrapers` returns discovered **keys** (usually the `TARGET_URL` value).
-* `/check-site-update?url=…` picks the **longest substring match** among keys to choose the scraper (specific > generic).
-
-Caching:
-
-* Each scraper writes a small signature/HTML cache under `…/.cache/` to detect changes between runs.
-
----
-
-## Generate Scrapers in Bulk
-
-Use the JSON list at `state-website-data/state-website-data.json` to scaffold many scrapers:
+## Running the API
 
 ```bash
-# dry run (no files written)
-python scripts/generate_scrapers_from_json.py --dry-run
-
-# generate for all states
-python scripts/generate_scrapers_from_json.py
-
-# subset, limit per state, custom selectors file
-python scripts/generate_scrapers_from_json.py -s CA CO --max-per-state 10 \
-  --selectors-file state-website-data/selectors.json
+uvicorn app.main:app --reload
+# Docs: http://localhost:8000/docs
+# Health: http://localhost:8000/health
 ```
 
-The generator:
+## HTTP Endpoints
 
-* Creates `scrapers/state/<xx>/<domain_slug>/check_updates.py`.
-* Emits a matching test in `tests/test_scrapers/…`.
-* Detects **PDF** URLs and builds a header/hash signature checker.
-* For HTML, uses a default CSS selector (override per domain via `selectors.json`).
+* `GET /health` – basic status and configuration echo.
 
----
+* `POST /ask` – **(stub)** Q\&A with citations.
+  Request:
+
+  ```json
+  { "q": "What changed for air permits in CO?", "top_k": 6, "filters": { "jurisdiction": "CO" } }
+  ```
+
+  Response (example placeholder):
+
+  ```json
+  {
+    "answer": "This is a placeholder answer. RAG pipeline not wired yet.",
+    "citations": [{ "url": "https://example.gov/reg/123", "excerpt": "…", "score": 0.82 }],
+    "used_filters": { "jurisdiction": "CO" }
+  }
+  ```
+
+* `GET /updates?jurisdiction=CO&class=Permitting&since=2025-08-01&risk_min=30&limit=50` – **(stub)** list recent updates with filters.
+
+* `POST /process/{update_id}` – **(stub)** trigger AI summarization/entity extraction/classification for an update.
+
+* `POST /notifications/push/register` – **(stub)** register device token for push notifications.
+
+## Scraper Generation
+
+Generate scraper files from JSON config:
+
+```json
+// scrapers.json (examples)
+[
+  {
+    "name": "ca_cec",
+    "target_url": "https://example.com/cec.html",
+    "type": "html",
+    "selector": "main, article, section, h1, h2, h3"
+  },
+  {
+    "name": "epa_bulletin",
+    "target_url": "https://example.com/bulletin.pdf",
+    "type": "pdf"
+  }
+]
+```
+
+Run the generator:
+
+```bash
+python scripts/generate_scrapers_from_json.py --config scrapers.json --outdir ./scrapers --overwrite
+```
+
+All generated scrapers expose:
+
+```python
+result = check_for_update(selector: str | None = None) -> dict
+# Unified schema:
+# {
+#   "url": "...",
+#   "updated": true|false,
+#   "diffSummary": "...",
+#   "new_content": "text or null",
+#   "old_content": "text or empty",
+#   "meta": {
+#     "content_type": "html|pdf",
+#     "selector_used": "..." or null,
+#     "signature": "etag|lm|cl or sha256",
+#     "fetched_at": "ISO-8601"
+#   }
+# }
+```
+
+## AI Processing & RAG
+
+* **Providers:** choose with `LLM_PROVIDER=gemini|openai` and set the matching API key.
+* **Planned outputs per update:** `summary.short`, `summary.detailed`, `bullet_changes`, `entities[]`, `doc_class`, `risk_score`.
+* **RAG:** chunk `new_content` (size/overlap in `.env`), embed with selected provider/model, store in pgvector for retrieval in `/ask`.
+
+> Until wired, the API returns placeholder responses so frontends can be built in parallel.
+
+## Notifications
+
+* **Slack:** set `SLACK_WEBHOOK_URL` or bot token + `ALERT_CHANNEL`.
+* **Push:** choose `PUSH_PROVIDER=expo|fcm|apns` and fill provider creds.
+* **Flow:** scrape → (updated) → process AI → evaluate risk/filters → send Slack/push.
+
+## GitHub Issues Import (Python)
+
+Bulk-create issues, labels, and milestones from `data/issues.json`.
+
+**Prep:**
+
+```bash
+pip install requests
+export GITHUB_TOKEN=ghp_your_token_with_repo_scope
+```
+
+**Run:**
+
+```bash
+python scripts/import_issues.py --file data/issues.json
+# or explicitly target a repo:
+python scripts/import_issues.py --file data/issues.json --repo owner/name
+# dry run:
+python scripts/import_issues.py --file data/issues.json --dry-run
+```
+
+`data/issues.json` structure:
+
+```json
+{
+  "issues": [
+    { "title": "Backend: Add /ask endpoint for RAG Q&A",
+      "body": "Implement POST /ask...",
+      "labels": ["backend","RAG","P0"],
+      "milestone": "Phase 1: Core Backend & AI"
+    }
+  ]
+}
+```
 
 ## Testing
 
-```bash
-# local
-pytest -q
+* **API:** `pytest` using FastAPI `TestClient` and snapshot tests for `/ask`, `/updates`.
+* **Scrapers:** golden fixtures for HTML/PDF; assert unified schema.
+* **AI:** mock client returning deterministic JSON for summaries/entities.
 
-# config is in pyproject.toml
-# pythonpath is ".", tests live under tests/test_scrapers
-```
+(Testing scaffolds are intentionally light so you can grow them with your storage choices.)
 
-Each generated scraper has a smoke test that mocks `fetch_html()` and asserts the result shape.
+## Deployment
 
----
+* **Dev:** `uvicorn app.main:app --reload`
+* **Prod (example):**
 
-## CI & Automation
+  ```bash
+  pip install "uvicorn[standard]" gunicorn
+  exec gunicorn -k uvicorn.workers.UvicornWorker -w 4 app.main:app
+  ```
+* **Env:** copy `.env.example` → `.env` and supply secrets via your platform (Docker/K8s/Render/Fly).
 
-GitHub Actions:
+## Roadmap
 
-* **CI** (`.github/workflows/ci.yml`)
-
-  * Installs service + dev deps
-  * Runs `pytest -q`
-  * Lints OpenAPI specs with Redocly
-* **OpenAPI validation** (`validate-openapi.yml`) – standalone lint run
-* **Weekday batch check** (`batch-check.yml`)
-
-  * Triggers at `13:00Z` *and* `14:00Z`
-  * Guards to only run when it’s **07:00 America/Denver**
-  * Posts a Slack summary (`RDB_API_URL`, `SLACK_WEBHOOK` repo secrets)
-
-> **Heads up:** In CI, make sure the path is `services/web_api/requirements.txt` (underscore). If your workflow still references `services/web-api/…` (hyphen), update it.
-
----
-
-## Docker
-
-**docker-compose (dev):**
-
-```yaml
-# docker-compose.yml
-version: "3.9"
-services:
-  api:
-    build: .
-    ports: ["8000:8000"]
-    volumes:
-      - ./.data_cache:/app/scrapers
-```
-
-**Dockerfile (update these if needed):**
-
-```dockerfile
-FROM python:3.11-slim
-WORKDIR /app
-COPY services/web_api/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-COPY . .
-ENV PYTHONPATH=/app
-EXPOSE 8000
-# Use factory entrypoint
-CMD ["uvicorn", "services.web_api.app:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000"]
-```
-
-Build & run:
-
-```bash
-docker compose up --build
-# → http://localhost:8000/health
-```
-
----
-
-## Configuration
-
-Environment variables (via `pydantic-settings`):
-
-| Var                | Default | Notes                             |        |          |
-| ------------------ | ------- | --------------------------------- | ------ | -------- |
-| `RDB_ENV`          | `dev`   | \`"dev"                           | "test" | "prod"\` |
-| `RDB_TIMEOUT_SECS` | `15`    | Default HTTP timeout for scrapers |        |          |
-
-Create a `.env` at repo root to override locally.
-
----
-
-## Troubleshooting
-
-**No `BaseSettings` in pydantic**
-Install pydantic v2 and pydantic-settings:
-
-```bash
-pip install "pydantic>=2.7" "pydantic-settings>=2.3"
-```
-
-**`ModuleNotFoundError: services.web_api` or router import errors**
-Ensure package markers exist:
-
-```bash
-touch services/__init__.py services/web_api/__init__.py services/web_api/routes/__init__.py
-touch scrapers/__init__.py scrapers/federal/__init__.py
-# (state packages are created by the generator)
-find . -name "__pycache__" -type d -exec rm -rf {} +
-```
-
-Run the **factory** entrypoint:
-
-```bash
-uvicorn services.web_api.app:create_app --factory --reload
-```
-
-**Docker/CI still using `services/web-api` (hyphen)**
-Update to `services/web_api` (underscore) and use the factory command in `CMD`.
-
-**/check-site-update returns 400**
-The URL you passed isn’t matched by any **key**. List keys:
-
-```bash
-curl -s http://127.0.0.1:8000/scrapers | jq -r '.keys[]'
-```
-
----
+* Wire AI post-processing (summaries, entities, classification)
+* RAG indexer + embeddings (pgvector)
+* Real data store for updates/chunks + migrations
+* Slack + push adapters with filters & schedules
+* Web dashboard (Next.js) and mobile app (Expo)
 
 ## License
 
-MIT © Contributors
+MIT (see `LICENSE`).
 
+---
 
+### Housekeeping
+
+* Keep secrets out of git: `.env` is ignored; commit only `.env.example`.
+* If you change environment or endpoint shapes, reflect them in this README and your frontends’ generated API clients.
+
+---
