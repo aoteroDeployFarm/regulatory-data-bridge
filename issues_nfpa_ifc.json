@@ -1,0 +1,64 @@
+{
+  "issues": [
+    {
+      "title": "Epic: Add Fire Codes Coverage (NFPA 30 & IFC)",
+      "body": "Track NFPA 30 and International Fire Code (IFC) adoption/changes via official public sources (no scraping paywalled code text). Deliver sources, scrapers, RAG integration, and notifications.",
+      "labels": ["area:fire-codes", "priority:P1", "batch:fire-codes-phase1"],
+      "milestone": "Fire Codes Phase 1"
+    },
+    {
+      "title": "Research: Identify public adoption/notice pages for NFPA 30 & IFC",
+      "body": "Find official state/municipal sources: Fire Marshal sites, ICC jurisdiction pages, public notices, errata bulletins. Capture URLs and ToS/licensing notes.",
+      "labels": ["area:fire-codes", "source:nfpa30", "source:ifc", "type:research", "priority:P1", "batch:fire-codes-phase1"],
+      "milestone": "Fire Codes Phase 1"
+    },
+    {
+      "title": "Config: Add initial fire-code sources for TX, CA, FL",
+      "body": "Add adoption/notice URLs to state-website-data/state-website-data.json for TX, CA, FL. Prefer stable notice/updates pages.",
+      "labels": ["area:fire-codes", "type:scraper", "priority:P1", "batch:fire-codes-phase1"],
+      "milestone": "Fire Codes Phase 1"
+    },
+    {
+      "title": "Generate scrapers and validate extraction (pilot states)",
+      "body": "Re-run generator. Validate selectors for notice pages. Verify updated/new_content/meta look sane for 2–3 pilot sources.",
+      "labels": ["area:fire-codes", "type:scraper", "priority:P1", "batch:fire-codes-phase1"],
+      "milestone": "Fire Codes Phase 1"
+    },
+    {
+      "title": "Expand fire-code sources across remaining states",
+      "body": "Add adoption/notice sources per state and regenerate scrapers. Track gaps where public sources aren’t available.",
+      "labels": ["area:fire-codes", "type:scraper", "priority:P2", "batch:fire-codes-phase1"],
+      "milestone": "Fire Codes Phase 1"
+    },
+    {
+      "title": "Indexer: Create 'fire-codes' collection and chunking",
+      "body": "Create a dedicated collection for fire-codes content. Chunk and store with source URLs and jurisdiction metadata.",
+      "labels": ["area:fire-codes", "type:rag", "priority:P1", "batch:fire-codes-phase1"],
+      "milestone": "Fire Codes Phase 1"
+    },
+    {
+      "title": "NLP: Extract citations (e.g., 'NFPA 30 §9.4')",
+      "body": "Entity extraction for code citations and dates; store in metadata for filtering and display.",
+      "labels": ["area:fire-codes", "type:rag", "priority:P2", "batch:fire-codes-phase1"],
+      "milestone": "Fire Codes Phase 1"
+    },
+    {
+      "title": "Prompts: Q&A templates for fire-codes",
+      "body": "Create question/summary prompts for jurisdiction-specific queries; ensure links back to sources.",
+      "labels": ["area:fire-codes", "type:rag", "priority:P2", "batch:fire-codes-phase1"],
+      "milestone": "Fire Codes Phase 1"
+    },
+    {
+      "title": "Notifications: Summaries + severity scoring",
+      "body": "Slack/webhook alerts that summarize detected NFPA 30/IFC changes with a rough impact score.",
+      "labels": ["area:fire-codes", "type:rag", "priority:P2", "batch:fire-codes-phase1"],
+      "milestone": "Fire Codes Phase 1"
+    },
+    {
+      "title": "Docs: Update README and ops guides for fire-codes",
+      "body": "Document coverage scope, legal note (no paywalled text), and usage examples for filtering fire-code sources.",
+      "labels": ["area:fire-codes", "type:research", "priority:P2", "batch:fire-codes-phase1"],
+      "milestone": "Fire Codes Phase 1"
+    }
+  ]
+}

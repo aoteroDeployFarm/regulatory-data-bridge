@@ -361,3 +361,38 @@ make run-scrapers
 * **Dashboard** (React/HTMX) querying stored updates + RAG answers.
 
 ---
+
+## 11) Fire Codes (NFPA 30 & IFC) — Roadmap
+
+We’re adding coverage for **NFPA 30 (Flammable and Combustible Liquids Code)** and the **International Fire Code (IFC)**. We will **not** scrape paywalled code text; we’ll focus on official adoption pages, notices, errata, and rulemaking portals.
+
+### Tasks
+- **Source discovery (public pages):**
+  - NFPA 30 and IFC adoption/change notices via state fire marshals, ICC jurisdiction pages, municipal/public notice portals.
+  - Track errata/bulletins and official summary pages where available.
+  - Record ToS/licensing notes per source.
+- **Config updates:**
+  - Add initial **TX, CA, FL** fire-code sources to `state-website-data/state-website-data.json`.
+  - Re-run the generator and verify HTML/PDF extraction.
+- **Scrapers & labels:**
+  - Ensure good selectors for notice pages (titles, body text).
+  - Add GitHub labels: `area:fire-codes`, `source:nfpa30`, `source:ifc`.
+- **RAG integration:**
+  - Create a `fire-codes` collection in the indexer.
+  - Entity extraction for code citations (e.g., “NFPA 30 §9.4”).
+  - Prompt templates: “What changed in IFC for <jurisdiction>?” with links to sources.
+- **Notifications & ops:**
+  - Slack/webhook alerts with short summaries and severity scoring.
+  - Basic observability (success/error, updated counts).
+
+> Legal note: respect licensing. Prefer official adoption summaries, notices, and rulemaking documents over full code text.
+
+## 12) GitHub Issues for Fire Codes (NFPA 30 & IFC)
+
+Use the provided issues JSON and importer to create labels, a milestone, and issues:
+
+```bash
+# make sure gh CLI is logged in and your venv is active
+python -m pip install httpx  # (already in requirements; just ensuring)
+python scripts/import_issues_nfpa_ifc.py --repo YOUR_ORG/YOUR_REPO --file issues_nfpa_ifc.json
+
