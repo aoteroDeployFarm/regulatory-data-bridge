@@ -1,0 +1,103 @@
+# .github/ISSUE_TEMPLATE/next-steps.yml
+# Import this file via GitHub Issues Importer or copy/paste chunks into your tracker.
+
+issues:
+  - title: "Backend: Add /ask endpoint for RAG Q&A"
+    body: "Implement POST /ask to answer regulatory questions using RAG (retrieval + Gemini Ultra/GPT)."
+    labels: ["backend", "RAG", "P0"]
+
+  - title: "Backend: Add /updates endpoint with filters"
+    body: "Expose GET /updates with filters (jurisdiction, class, since, risk_min)."
+    labels: ["backend", "api", "P0"]
+
+  - title: "Backend: Add /process/{update_id} endpoint"
+    body: "Trigger summarize/classify/entities AI processing for an update."
+    labels: ["backend", "AI", "P0"]
+
+  - title: "Backend: Push notifications registration"
+    body: "Add /notifications/push/register to store device tokens per tenant."
+    labels: ["backend", "notifications", "P1"]
+
+  - title: "Alerts Worker: Slack + Push delivery"
+    body: "Extend alerts worker to send messages via Slack + Push in addition to webhook/email."
+    labels: ["alerts", "worker", "P1"]
+
+  - title: "AI: Summarization pipeline"
+    body: "Implement summarize.short, summarize.detailed, bullet_changes, and risk_score with Gemini Ultra (fallback to GPT)."
+    labels: ["AI", "summarization", "P0"]
+
+  - title: "AI: Entity extraction + classification"
+    body: "Extract entities (agencies, chemicals, statutes, dates) and classify doc_class."
+    labels: ["AI", "NLP", "P0"]
+
+  - title: "AI: Store risk_score, doc_class, entities"
+    body: "Persist AI-derived metadata in DB with each update."
+    labels: ["AI", "database", "P0"]
+
+  - title: "AI: Chunk & embed new_content"
+    body: "Split into ~1–2k token chunks, embed, and store in pgvector for RAG."
+    labels: ["AI", "RAG", "P1"]
+
+  - title: "Web: Generate TS client from OpenAPI"
+    body: "Use openapi-typescript (or similar) to sync contracts for frontend."
+    labels: ["frontend", "web", "P0"]
+
+  - title: "Web: /ask page"
+    body: "Implement Ask page with search bar, answer display, and citations."
+    labels: ["frontend", "web", "P0"]
+
+  - title: "Web: /updates page"
+    body: "Table view of updates with filters + drawer for detail."
+    labels: ["frontend", "web", "P0"]
+
+  - title: "Web: /trends page"
+    body: "Charts showing updates/week, doc_class distribution, risk scores."
+    labels: ["frontend", "web", "visualization", "P1"]
+
+  - title: "Web: Auth integration"
+    body: "Add multi-tenant authentication (Clerk/Auth0 or JWT)."
+    labels: ["frontend", "auth", "P1"]
+
+  - title: "Mobile: Auth flow"
+    body: "Implement tenant-aware authentication in Expo app."
+    labels: ["mobile", "auth", "P1"]
+
+  - title: "Mobile: Screens (Ask, Updates, UpdateDetail)"
+    body: "Build core screens for question answering, updates list, and detail view."
+    labels: ["mobile", "frontend", "P0"]
+
+  - title: "Mobile: Push registration + deep links"
+    body: "Register device tokens with backend, handle push → open UpdateDetail."
+    labels: ["mobile", "notifications", "P1"]
+
+  - title: "DevEx: CI schema drift check"
+    body: "Fail builds if OpenAPI spec changes without version bump."
+    labels: ["devex", "CI/CD", "P0"]
+
+  - title: "Testing: Scraper fixtures"
+    body: "Add golden HTML/PDF fixtures and schema tests for scrapers."
+    labels: ["testing", "scrapers", "P0"]
+
+  - title: "Testing: Mock AI client"
+    body: "Provide FakeAiClient for deterministic CI without model calls."
+    labels: ["testing", "AI", "P0"]
+
+  - title: "Testing: API snapshot tests"
+    body: "Use FastAPI TestClient to validate /ask and /updates outputs."
+    labels: ["testing", "backend", "P0"]
+
+  - title: "Testing: Seed demo tenant"
+    body: "Seed 2 HTML + 2 PDF updates with summaries/entities for front-end dev."
+    labels: ["testing", "fixtures", "P1"]
+
+  - title: "Ops: Observability & logging"
+    body: "Log source_id, latency_ms, risk_score, doc_class. Add dashboards."
+    labels: ["ops", "monitoring", "P1"]
+
+  - title: "Ops: Rate limiting"
+    body: "Add per-tenant and per-IP rate limits on /ask."
+    labels: ["ops", "security", "P1"]
+
+  - title: "Ops: Answer audit trail"
+    body: "Persist {q, sources, model, latency_ms} for each answer for traceability."
+    labels: ["ops", "audit", "P1"]

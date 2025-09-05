@@ -3,3 +3,6 @@ pytest-mock
 pytest-asyncio
 httpx
 requests-mock
+pypdf
+beautifulsoup4
+
