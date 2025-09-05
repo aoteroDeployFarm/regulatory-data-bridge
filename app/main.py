@@ -1,84 +1,79 @@
+# app/main.py
 from __future__ import annotations
 
-import logging
-import os
-import time
-from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from settings import Settings, get_settings
+from settings import Settings, get_settings  # root-level settings.py
 
-# ---------- Lifespan: logging + timezone ----------
-def _configure_logging(cfg: Settings) -> None:
-    level_name = cfg.log_level.value if hasattr(cfg.log_level, "value") else str(cfg.log_level)
-    logging.basicConfig(
-        level=getattr(logging, level_name, logging.INFO),
-        format="%(asctime)s %(levelname)s %(name)s - %(message)s",
+
+def create_app(cfg: Settings) -> FastAPI:
+    app = FastAPI(
+        title=cfg.app_name,
+        version=cfg.api_version,
+        docs_url="/docs",
+        redoc_url="/redoc",
     )
-    logging.getLogger("uvicorn.access").setLevel(logging.INFO if cfg.debug else logging.WARNING)
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    cfg = get_settings()
-    # Timezone
-    os.environ["TZ"] = cfg.tz
+    # CORS (compatible with old 'cors_allowed_origins' and new 'cors_origins')
+    allowed_origins = getattr(cfg, "cors_allowed_origins", None) or cfg.cors_origins or ["*"]
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=allowed_origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    # Routers (include if present; don't crash if some aren't there yet)
     try:
-        time.tzset()  # not available on Windows
+        from app.routers import ask  # type: ignore
+        app.include_router(ask.router)
     except Exception:
         pass
 
-    # Logging
-    _configure_logging(cfg)
-    logging.getLogger("regbridge").info(
-        "app_start",
-        extra={"env": cfg.env, "model": cfg.llm_model, "provider": cfg.llm_provider},
-    )
-    yield
-    logging.getLogger("regbridge").info("app_stop")
+    try:
+        from app.routers import updates  # type: ignore
+        app.include_router(updates.router)
+    except Exception:
+        pass
 
-# We intentionally defer cfg access until after settings are ready.
-app = FastAPI(
-    title="Regulatory Data Bridge",
-    version="0.1.0",
-    lifespan=lifespan,
-)
+    try:
+        from app.routers import process  # type: ignore
+        app.include_router(process.router)
+    except Exception:
+        pass
 
-# CORS (add immediately; settings will be read now — make sure your .env has valid keys)
-_cfg = get_settings()
-allowed_origins = _cfg.cors_allowed_origins
-# In dev, allow all if no explicit origins were set
-if _cfg.env == _cfg.env.development and not allowed_origins:
-    allowed_origins = ["*"]
+    try:
+        from app.routers import notifications  # type: ignore
+        app.include_router(notifications.router)
+    except Exception:
+        pass
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=allowed_origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+    try:
+        from app.routers import admin  # type: ignore
+        app.include_router(admin.router)
+    except Exception:
+        pass
 
-# ---------- Routers ----------
-from app.routers import ask, updates, process, notifications  # noqa: E402
+    # Meta endpoints
+    @app.get("/", tags=["meta"])
+    def root(settings: Settings = Depends(get_settings)):
+        return {
+            "name": settings.app_name,
+            "version": settings.api_version,
+            "env": settings.environment,
+            "time": datetime.now(timezone.utc).isoformat(),
+        }
 
-app.include_router(ask.router)
-app.include_router(updates.router)
-app.include_router(process.router)
-app.include_router(notifications.router)
+    @app.get("/healthz", tags=["meta"])
+    def healthz():
+        return {"ok": True, "ts": datetime.now(timezone.utc).isoformat()}
 
-# ---------- Health ----------
-@app.get("/health")
-def health(cfg: Settings = Depends(get_settings)):
-    return {
-        "ok": True,
-        "name": cfg.app_name,
-        "env": cfg.env,
-        "tz": cfg.tz,
-        "time": datetime.now(timezone.utc).isoformat(),
-        "vector": cfg.pgvector_enabled,
-        "provider": cfg.llm_provider,
-        "model": cfg.llm_model,
-    }
+    return app
+
+
+# ASGI app
+app = create_app(get_settings())

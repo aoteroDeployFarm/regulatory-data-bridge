@@ -1,8 +1,9 @@
-pytest
-pytest-mock
-pytest-asyncio
+fastapi
+uvicorn
+pydantic
+pydantic-settings
 httpx
-requests-mock
-pypdf
+requests
 beautifulsoup4
-
+pypdf
+pdfminer.six

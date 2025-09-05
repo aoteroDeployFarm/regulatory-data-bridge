@@ -1,283 +1,363 @@
 # Regulatory Data Bridge
 
-> Scrape regulatory sources (HTML & PDF), detect changes, extract content, and power Q\&A + alerts with Gemini/GPT.
+End-to-end pipeline for discovering, fetching, and extracting regulatory content (HTML & PDF) across U.S. state sources — ready for RAG and downstream analysis.
 
-[![FastAPI](https://img.shields.io/badge/FastAPI-ready-009688.svg)]()
-[![Python](https://img.shields.io/badge/Python-3.11+-3776AB.svg)]()
-[![License](https://img.shields.io/badge/license-MIT-lightgrey.svg)]()
-
-## Table of Contents
-
-- [Regulatory Data Bridge](#regulatory-data-bridge)
-  - [Table of Contents](#table-of-contents)
-  - [Overview](#overview)
-  - [Features](#features)
-  - [Architecture](#architecture)
-  - [Project Structure](#project-structure)
-  - [Quick Start](#quick-start)
-    - [Requirements](#requirements)
-    - [Setup](#setup)
-    - [Environment](#environment)
-  - [Running the API](#running-the-api)
-  - [HTTP Endpoints](#http-endpoints)
-  - [Scraper Generation](#scraper-generation)
-  - [AI Processing \& RAG](#ai-processing--rag)
-  - [Notifications](#notifications)
-  - [GitHub Issues Import (Python)](#github-issues-import-python)
-  - [Testing](#testing)
-  - [Deployment](#deployment)
-  - [Roadmap](#roadmap)
-  - [License](#license)
-    - [Housekeeping](#housekeeping)
+* **Generator** converts your config (`state → [urls…]`) into Python scrapers.
+* **Scrapers** extract text and track changes (signature + content cache).
+* **FastAPI** app exposes admin endpoints to list/run scrapers.
+* **CLIs** to batch-run scrapers via Python or directly in-process.
 
 ---
 
-## Overview
+## 1) Quick Start
 
-Regulatory Data Bridge monitors agency sources, detects updates, extracts content (HTML & PDF), and makes it queryable via a FastAPI endpoint with retrieval-augmented generation (RAG). It supports both **Gemini** and **OpenAI** providers, shared schema across scrapers, and alerting (Slack & push).
+```bash
+# 1) Create & activate a virtualenv
+python3 -m venv .venv
+source .venv/bin/activate         # Windows PowerShell: .\.venv\Scripts\Activate.ps1
 
-## Features
+# 2) Install deps
+python -m pip install -U pip
+python -m pip install -r requirements.txt
+# (or) minimal set:
+# python -m pip install fastapi uvicorn pydantic pydantic-settings httpx requests beautifulsoup4 pypdf pdfminer.six
 
-* ✅ Unified scraper output schema (`url`, `updated`, `new_content`, `old_content`, `meta`)
-* ✅ HTML & PDF templates with caching and content extraction
-* ✅ FastAPI service with `/ask`, `/updates`, `/process/{id}`, `/notifications/push/register`
-* ✅ Typed configuration via **Pydantic v2** (`settings.py`) + `.env` support
-* ✅ GitHub issues bulk import with a **Python** script (no bash/gh required)
-* 🧠 AI post-processing hooks (summaries, entities, doc class, risk score)
-* 🔎 RAG-ready: chunking + embeddings (pgvector friendly)
-* 🔔 Slack & push notifications (Expo/FCM/APNs adapters planned)
+# 3) Run the API
+python -m uvicorn app.main:app --reload
 
-## Architecture
-
-```
-Scrapers (HTML/PDF)  -->  Updates Store  -->  AI Post-Processing  -->  RAG Index
-        |                         |                |                     |
-        +-- signature/content ----+                +-- summaries/entities+
-                                                             |
-                                                        FastAPI /ask
+# 4) Open docs
+# http://127.0.0.1:8000/docs
 ```
 
-## Project Structure
+> Tip: In VS Code, select the interpreter inside `.venv`
+> (Cmd/Ctrl+Shift+P → “Python: Select Interpreter”).
+
+---
+
+## 2) Settings & Environment
+
+We keep a simple root-level `settings.py` (Pydantic Settings). It reads `.env` if present.
+
+**.env example (`.env.example`)**
+
+```ini
+# App
+APP_NAME="Regulatory Data Bridge"
+API_VERSION="0.1.0"
+ENVIRONMENT="local"
+DEBUG=false
+LOG_LEVEL="info"
+
+# Server defaults
+HOST="127.0.0.1"
+PORT=8000
+
+# CORS: comma-separated, or leave "*" for any
+CORS_ORIGINS="*"
+
+# Optional integrations
+OPENAI_API_KEY=
+GOOGLE_API_KEY=
+GEMINI_MODEL="models/gemini-1.5-pro"
+SLACK_WEBHOOK_URL=
+```
+
+**Ignore secrets**
+
+```
+# .gitignore (ensure these are present)
+.env
+.venv/
+__pycache__/
+```
+
+---
+
+## 3) Project Layout
 
 ```
 .
-├── app/
-│   ├── main.py                      # FastAPI app, CORS, health, routers
-│   └── routers/
-│       ├── ask.py                   # POST /ask
-│       ├── updates.py               # GET /updates
-│       ├── process.py               # POST /process/{update_id}
-│       └── notifications.py         # POST /notifications/push/register
-├── scripts/
-│   ├── import_issues.py             # Python GitHub bulk issue importer
-│   └── generate_scrapers_from_json.py  # Scraper generator (HTML/PDF)
-├── scrapers/                        # Generated scrapers live here
-├── data/
-│   └── issues.json                  # Issues payload for importer script
-├── settings.py                      # Pydantic v2 typed config
-├── .env.example                     # Sample environment config
-├── README.md
-└── .gitignore
+├─ app/
+│  ├─ main.py                 # FastAPI app (includes routers if present)
+│  └─ routers/
+│     ├─ admin.py             # List & run scrapers via API
+│     ├─ updates.py           # (your project route, optional)
+│     └─ ...                  # (ask, process, notifications ...)
+├─ scrapers/
+│  └─ state/
+│     ├─ al/
+│     │  ├─ __init__.py
+│     │  └─ alabama-gsa-state-al-us-ogb_html_scraper.py
+│     ├─ ca/
+│     └─ ...                  # one folder per 2-letter state code
+├─ scripts/
+│  ├─ generate_scrapers_from_json.py   # generator (state → urls)
+│  ├─ run_all_scrapers.py              # batch-run scrapers in-process
+│  └─ admin_client.py                  # call admin API (list/scrape/bulk)
+├─ state-website-data/
+│  └─ state-website-data.json          # config (dict: state → [urls...])
+├─ settings.py                 # Pydantic settings (root-level)
+├─ requirements.txt
+├─ requirements-dev.txt
+└─ README.md
 ```
 
-## Quick Start
+---
 
-### Requirements
+## 4) Config → Scrapers (Generator)
 
-* Python **3.11+**
-* (Optional) Postgres + pgvector, Redis
-
-### Setup
-
-```bash
-python -m venv .venv
-source .venv/bin/activate   # Windows: .venv\Scripts\activate
-pip install -U pip
-
-# API dependencies
-pip install fastapi uvicorn pydantic pydantic-settings requests
-
-# Scraper deps
-pip install beautifulsoup4 pypdf pdfminer.six
-
-# (Optional) DB/Vector/Workers later:
-# pip install "psycopg[binary]" sqlalchemy pgvector tenacity celery redis
-```
-
-### Environment
-
-```bash
-cp .env.example .env
-# Edit .env – set LLM_PROVIDER + matching API key, DB URLs, etc.
-```
-
-## Running the API
-
-```bash
-uvicorn app.main:app --reload
-# Docs: http://localhost:8000/docs
-# Health: http://localhost:8000/health
-```
-
-## HTTP Endpoints
-
-* `GET /health` – basic status and configuration echo.
-
-* `POST /ask` – **(stub)** Q\&A with citations.
-  Request:
-
-  ```json
-  { "q": "What changed for air permits in CO?", "top_k": 6, "filters": { "jurisdiction": "CO" } }
-  ```
-
-  Response (example placeholder):
-
-  ```json
-  {
-    "answer": "This is a placeholder answer. RAG pipeline not wired yet.",
-    "citations": [{ "url": "https://example.gov/reg/123", "excerpt": "…", "score": 0.82 }],
-    "used_filters": { "jurisdiction": "CO" }
-  }
-  ```
-
-* `GET /updates?jurisdiction=CO&class=Permitting&since=2025-08-01&risk_min=30&limit=50` – **(stub)** list recent updates with filters.
-
-* `POST /process/{update_id}` – **(stub)** trigger AI summarization/entity extraction/classification for an update.
-
-* `POST /notifications/push/register` – **(stub)** register device token for push notifications.
-
-## Scraper Generation
-
-Generate scraper files from JSON config:
-
-```json
-// scrapers.json (examples)
-[
-  {
-    "name": "ca_cec",
-    "target_url": "https://example.com/cec.html",
-    "type": "html",
-    "selector": "main, article, section, h1, h2, h3"
-  },
-  {
-    "name": "epa_bulletin",
-    "target_url": "https://example.com/bulletin.pdf",
-    "type": "pdf"
-  }
-]
-```
-
-Run the generator:
-
-```bash
-python scripts/generate_scrapers_from_json.py --config scrapers.json --outdir ./scrapers --overwrite
-```
-
-All generated scrapers expose:
-
-```python
-result = check_for_update(selector: str | None = None) -> dict
-# Unified schema:
-# {
-#   "url": "...",
-#   "updated": true|false,
-#   "diffSummary": "...",
-#   "new_content": "text or null",
-#   "old_content": "text or empty",
-#   "meta": {
-#     "content_type": "html|pdf",
-#     "selector_used": "..." or null,
-#     "signature": "etag|lm|cl or sha256",
-#     "fetched_at": "ISO-8601"
-#   }
-# }
-```
-
-## AI Processing & RAG
-
-* **Providers:** choose with `LLM_PROVIDER=gemini|openai` and set the matching API key.
-* **Planned outputs per update:** `summary.short`, `summary.detailed`, `bullet_changes`, `entities[]`, `doc_class`, `risk_score`.
-* **RAG:** chunk `new_content` (size/overlap in `.env`), embed with selected provider/model, store in pgvector for retrieval in `/ask`.
-
-> Until wired, the API returns placeholder responses so frontends can be built in parallel.
-
-## Notifications
-
-* **Slack:** set `SLACK_WEBHOOK_URL` or bot token + `ALERT_CHANNEL`.
-* **Push:** choose `PUSH_PROVIDER=expo|fcm|apns` and fill provider creds.
-* **Flow:** scrape → (updated) → process AI → evaluate risk/filters → send Slack/push.
-
-## GitHub Issues Import (Python)
-
-Bulk-create issues, labels, and milestones from `data/issues.json`.
-
-**Prep:**
-
-```bash
-pip install requests
-export GITHUB_TOKEN=ghp_your_token_with_repo_scope
-```
-
-**Run:**
-
-```bash
-python scripts/import_issues.py --file data/issues.json
-# or explicitly target a repo:
-python scripts/import_issues.py --file data/issues.json --repo owner/name
-# dry run:
-python scripts/import_issues.py --file data/issues.json --dry-run
-```
-
-`data/issues.json` structure:
+Your config is a dict of **`"State Name": [url, ...]`**:
 
 ```json
 {
-  "issues": [
-    { "title": "Backend: Add /ask endpoint for RAG Q&A",
-      "body": "Implement POST /ask...",
-      "labels": ["backend","RAG","P0"],
-      "milestone": "Phase 1: Core Backend & AI"
-    }
+  "Alabama": [
+    "https://www.gsa.state.al.us/ogb",
+    "https://adem.alabama.gov/air"
+  ],
+  "Alaska": [
+    "https://dec.alaska.gov/air/air-permit/",
+    "https://rca.alaska.gov/RCAWeb/home.aspx"
   ]
 }
 ```
 
-## Testing
+**Generate scrapers** (state-aware layout + caching + extraction):
 
-* **API:** `pytest` using FastAPI `TestClient` and snapshot tests for `/ask`, `/updates`.
-* **Scrapers:** golden fixtures for HTML/PDF; assert unified schema.
-* **AI:** mock client returning deterministic JSON for summaries/entities.
+```bash
+python scripts/generate_scrapers_from_json.py \
+  --config ./state-website-data/state-website-data.json \
+  --outdir ./scrapers \
+  --overwrite
+```
 
-(Testing scaffolds are intentionally light so you can grow them with your storage choices.)
+* Output files land in `scrapers/state/<state_code>/...`
+* HTML files end with `_html_scraper.py`, PDFs with `_pdf_scraper.py`.
+* Each scraper maintains a `.cache/` folder (signature + extracted content).
 
-## Deployment
+**HTML extraction**
 
-* **Dev:** `uvicorn app.main:app --reload`
-* **Prod (example):**
+* Uses `BeautifulSoup` to extract text from the page.
+* Default selector: `main, article, section, h1, h2, h3` (override at runtime).
 
-  ```bash
-  pip install "uvicorn[standard]" gunicorn
-  exec gunicorn -k uvicorn.workers.UvicornWorker -w 4 app.main:app
-  ```
-* **Env:** copy `.env.example` → `.env` and supply secrets via your platform (Docker/K8s/Render/Fly).
+**PDF extraction**
 
-## Roadmap
+* Uses `pypdf` (and/or `pdfminer.six`) to extract text from bytes.
 
-* Wire AI post-processing (summaries, entities, classification)
-* RAG indexer + embeddings (pgvector)
-* Real data store for updates/chunks + migrations
-* Slack + push adapters with filters & schedules
-* Web dashboard (Next.js) and mobile app (Expo)
+**Unified result schema**
 
-## License
-
-MIT (see `LICENSE`).
+```json
+{
+  "url": "<source url>",
+  "updated": true,
+  "diffSummary": "Content/signature changed",
+  "new_content": "…",
+  "old_content": "…",
+  "meta": {
+    "content_type": "html|pdf",
+    "selector_used": "… or null",
+    "signature": "etag=...|lm=...|cl=... or sha256=…",
+    "fetched_at": "2025-09-05T18:00:00Z"
+  }
+}
+```
 
 ---
 
-### Housekeeping
+## 5) Running Scrapers
 
-* Keep secrets out of git: `.env` is ignored; commit only `.env.example`.
-* If you change environment or endpoint shapes, reflect them in this README and your frontends’ generated API clients.
+### A) Admin API (FastAPI)
+
+Start the API:
+
+```bash
+python -m uvicorn app.main:app --reload
+# docs at: http://127.0.0.1:8000/docs
+```
+
+**List scrapers**
+
+* `GET /admin/scrapers`
+
+  * Optional `?state=tx`
+
+**Run one scraper**
+
+* `POST /admin/scrape?source_id=<filename_stem>`
+
+  * Optional `&state=tx` (if duplicates)
+  * Optional `&force=true` (clear `.cache` first)
+  * Optional `&selector=main,article` (HTML override)
+
+Examples:
+
+```bash
+# List
+curl -s http://127.0.0.1:8000/admin/scrapers | jq '.[0:5]'
+
+# Run one
+curl -s -X POST \
+  "http://127.0.0.1:8000/admin/scrape?source_id=alabama-gsa-state-al-us-ogb_html_scraper" \
+  | jq
+
+# Force & override selector
+curl -s -X POST \
+  "http://127.0.0.1:8000/admin/scrape?source_id=..._html_scraper&force=true&selector=main,article" \
+  | jq
+```
+
+> If you paste the URL in a browser (GET), you’ll get 405. Use **POST** from Swagger UI or curl.
+> (You can allow GET by changing the decorator to `@router.api_route("/scrape", methods=["GET","POST"])`.)
+
+### B) Python Admin Client (HTTP)
+
+`scripts/admin_client.py` (no curl needed):
+
+```bash
+# list
+python scripts/admin_client.py list
+python scripts/admin_client.py list --state tx
+
+# run one
+python scripts/admin_client.py scrape \
+  --source-id alabama-gsa-state-al-us-ogb_html_scraper
+
+# bulk via API, write JSONL
+python scripts/admin_client.py bulk \
+  --state ca --pattern air --limit 5 --only-updated \
+  --out data/runs/api_bulk.jsonl
+```
+
+### C) Batch Runner (In-process)
+
+Run all scrapers locally (no HTTP hop), persist JSONL:
+
+```bash
+python scripts/run_all_scrapers.py \
+  --workers 8 \
+  --out data/runs/scrape_$(date -u +%Y%m%dT%H%M%SZ).jsonl
+
+# filters
+python scripts/run_all_scrapers.py --state tx --pattern air --limit 5
+python scripts/run_all_scrapers.py --only-updated
+```
+
+---
+
+## 6) Caching & Change Detection
+
+Each scraper stores:
+
+* **`last_signature.json`** — last observed signature (ETag/Last-Modified/Content-Length or sha256 of full content).
+* **`last_content.txt`** — last extracted text (for `old_content` diffs).
+
+Cache path: `scrapers/state/<code>/<scraper_dir>/.cache/`
+
+Use `force=true` in the admin route to clear cache before running one.
+
+---
+
+## 7) Requirements
+
+**`requirements.txt`**
+
+```txt
+fastapi
+uvicorn
+pydantic
+pydantic-settings
+httpx
+requests
+beautifulsoup4
+pypdf
+pdfminer.six
+```
+
+**`requirements-dev.txt`**
+
+```txt
+pytest
+pytest-asyncio
+httpx
+requests
+beautifulsoup4
+pypdf
+pdfminer.six
+```
+
+Install:
+
+```bash
+python -m pip install -r requirements.txt
+# (dev)
+python -m pip install -r requirements-dev.txt
+```
+
+---
+
+## 8) Makefile (optional convenience)
+
+```
+.PHONY: api gen run-scrapers
+
+api:
+\tpython -m uvicorn app.main:app --reload
+
+gen:
+\tpython scripts/generate_scrapers_from_json.py --config ./state-website-data/state-website-data.json --outdir ./scrapers --overwrite
+
+run-scrapers:
+\tpython scripts/run_all_scrapers.py --workers 12
+```
+
+Usage:
+
+```bash
+make api
+make gen
+make run-scrapers
+```
+
+---
+
+## 9) Troubleshooting
+
+**Pylance “Import could not be resolved”**
+
+* Ensure VS Code uses the `.venv` interpreter.
+* Install deps (`httpx`, `bs4`, `pypdf`, `pdfminer.six`).
+* Reload VS Code window.
+
+**`ModuleNotFoundError: settings`**
+
+* We use root `settings.py`. Make sure `app/main.py` imports:
+
+  ```python
+  from settings import Settings, get_settings
+  ```
+* Ensure `app/__init__.py` and `app/routers/__init__.py` exist if needed.
+
+**405 on `/admin/scrape`**
+
+* Use **POST** (`curl -X POST` or Swagger UI).
+* Or change the decorator to accept GET.
+
+**404 `/favicon.ico`**
+
+* Harmless. Add a `static/favicon.ico` if you want to silence it.
+
+**Windows venv activation**
+
+* PowerShell: `.\.venv\Scripts\Activate.ps1`
+* If policy error: `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass`
+
+---
+
+## 10) Next Steps (nice to have)
+
+* **/admin/cache/clear** endpoint (per state or all).
+* **/admin/scrape-all** endpoint (trigger batch from API).
+* **Store results** (SQLite/Postgres) and index `new_content` for RAG.
+* **Notifications** (Slack/Webhooks) on impactful updates.
+* **Dashboard** (React/HTMX) querying stored updates + RAG answers.
 
 ---
