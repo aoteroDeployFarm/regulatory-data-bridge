@@ -1,0 +1,12 @@
+fastapi
+uvicorn[standard]
+sqlalchemy>=2.0
+pydantic>=2
+alembic
+python-dotenv
+requests
+feedparser
+beautifulsoup4
+apscheduler
+psycopg[binary]     # preferred for psycopg3
+# or psycopg2-binary  # if you need psycopg2
