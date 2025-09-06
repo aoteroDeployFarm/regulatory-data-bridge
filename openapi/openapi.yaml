@@ -1,0 +1,202 @@
+openapi: 3.1.0
+info:
+  title: Regulatory Monitor API
+  version: "0.1.0"
+  description: Hybrid retrieval and answer composition for energy and fire codes (NFPA 30, IFC, state regs).
+servers:
+  - url: https://api.regmon.example.com
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+  schemas:
+    SearchResult:
+      type: object
+      properties:
+        doc_id: { type: string }
+        title: { type: string }
+        jurisdiction: { type: string, example: CO }
+        standard: { type: array, items: { type: string, example: IFC } }
+        section_path: { type: string, example: "IFC 5704.2.9.7" }
+        snippet: { type: string }
+        url: { type: string, format: uri }
+        published_date: { type: string, format: date }
+        score: { type: number }
+    SearchResponse:
+      type: object
+      properties:
+        query: { type: string }
+        results:
+          type: array
+          items: { $ref: '#/components/schemas/SearchResult' }
+    ChangeItem:
+      type: object
+      properties:
+        doc_id: { type: string }
+        title: { type: string }
+        jurisdiction: { type: string }
+        standard: { type: array, items: { type: string } }
+        section_path: { type: string }
+        change_type: { type: string, enum: [added, amended, repealed] }
+        summary: { type: string }
+        published_date: { type: string, format: date }
+        url: { type: string, format: uri }
+    ChangesResponse:
+      type: object
+      properties:
+        since: { type: string, format: date }
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/ChangeItem' }
+    AnswerRequest:
+      type: object
+      properties:
+        question: { type: string }
+        context_doc_ids:
+          type: array
+          items: { type: string }
+        mode: { type: string, enum: [strict, advisory], default: strict }
+    Citation:
+      type: object
+      properties:
+        title: { type: string }
+        section: { type: string }
+        jurisdiction: { type: string }
+        date: { type: string, format: date }
+        url: { type: string, format: uri }
+    AnswerResponse:
+      type: object
+      properties:
+        answer_draft: { type: string }
+        citations:
+          type: array
+          items: { $ref: '#/components/schemas/Citation' }
+        confidence: { type: string, enum: [high, medium, low] }
+security:
+  - ApiKeyAuth: []
+paths:
+  /search:
+    get:
+      summary: Hybrid search across indexed regulations
+      parameters:
+        - in: query
+          name: q
+          schema: { type: string }
+          required: true
+        - in: query
+          name: jurisdiction
+          schema: { type: array, items: { type: string } }
+          style: form
+          explode: true
+        - in: query
+          name: standard
+          schema: { type: array, items: { type: string, enum: [IFC, NFPA30] } }
+          style: form
+          explode: true
+        - in: query
+          name: section
+          schema: { type: string }
+        - in: query
+          name: date_from
+          schema: { type: string, format: date }
+        - in: query
+          name: date_to
+          schema: { type: string, format: date }
+        - in: query
+          name: top_k
+          schema: { type: integer, default: 8, minimum: 1, maximum: 50 }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SearchResponse' }
+              examples:
+                example:
+                  value:
+                    query: "secondary containment Class I liquids"
+                    results:
+                      - doc_id: "co-ifc-2021-5704"
+                        title: "International Fire Code (2021) — Colorado Amendments"
+                        jurisdiction: "CO"
+                        standard: ["IFC"]
+                        section_path: "IFC 5704.2.9.7"
+                        snippet: "Secondary containment shall be provided where ..."
+                        url: "https://codes.example.gov/co/ifc-2021-amendments#5704.2.9.7"
+                        published_date: "2024-07-01"
+                        score: 0.92
+  /changes:
+    get:
+      summary: List recent changes in monitored sources
+      parameters:
+        - in: query
+          name: jurisdiction
+          schema: { type: array, items: { type: string } }
+          style: form
+          explode: true
+        - in: query
+          name: standard
+          schema: { type: array, items: { type: string, enum: [IFC, NFPA30] } }
+          style: form
+          explode: true
+        - in: query
+          name: since
+          schema: { type: string, format: date }
+          required: true
+        - in: query
+          name: limit
+          schema: { type: integer, default: 20, minimum: 1, maximum: 100 }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ChangesResponse' }
+              examples:
+                example:
+                  value:
+                    since: "2025-01-01"
+                    items:
+                      - doc_id: "nfpa30-2025-r1"
+                        title: "NFPA 30 Tentative Interim Amendment on Portable Containers"
+                        jurisdiction: "National"
+                        standard: ["NFPA30"]
+                        section_path: "NFPA 30 9.5.1"
+                        change_type: "amended"
+                        summary: "Clarified container construction and labeling for certain Class I liquids."
+                        published_date: "2025-03-15"
+                        url: "https://www.nfpa.org/..."
+  /answer:
+    post:
+      summary: Compose a draft answer with citations
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AnswerRequest' }
+            examples:
+              example:
+                value:
+                  question: "What are secondary containment requirements for Class I liquids in Colorado?"
+                  context_doc_ids: ["co-ifc-2021-5704", "co-amend-2024-07"]
+                  mode: "strict"
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AnswerResponse' }
+              examples:
+                example:
+                  value:
+                    answer_draft: >-
+                      Secondary containment is required where spills could occur during dispensing or transfer of Class I liquids; capacity and design must prevent release to drains and ignition sources.
+                    citations:
+                      - title: "International Fire Code (2021) — Colorado Amendments"
+                        section: "IFC 5704.2.9.7"
+                        jurisdiction: "CO"
+                        date: "2024-07-01"
+                        url: "https://codes.example.gov/co/ifc-2021-amendments#5704.2.9.7"
+                    confidence: "medium"
