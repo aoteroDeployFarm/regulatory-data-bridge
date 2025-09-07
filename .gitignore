@@ -1,63 +1,132 @@
-# ---- OS / Editor ----
+# --------------------
+# OS / Editors
+# --------------------
 .DS_Store
 Thumbs.db
 *.swp
-.vscode/
+*.swo
+*.tmp
+*.bak
 .idea/
+.vscode/
+*.iml
 
-# ---- Python ----
+# --------------------
+# Python
+# --------------------
 __pycache__/
 *.py[cod]
 *.pyo
 *.pyd
 *.so
+*.egg
 *.egg-info/
 .eggs/
-.build/
-dist/
-build/
-.mypy_cache/
-.pytype/
-.pytest_cache/
-.coverage*
-coverage/
+.Python
+.python-version
+.sitecustomize.py
+
+# Virtualenvs (anywhere)
 .venv/
 venv/
+ENV/
+env/
+**/.venv/
+**/venv/
 
-# ---- Node/Web ----
+# Packaging / Build
+build/
+dist/
+pip-wheel-metadata/
+*.manifest
+*.spec
+
+# Tools / Linters / Testing
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.mypy_cache/
+.ruff_cache/
+.cache/
+
+# Logs
+*.log
+logs/
+**/logs/
+
+# Type check / IDE metadata
+.pyright/
+.dmypy.json
+dmypy.json
+
+# --------------------
+# Node / Frontend
+# --------------------
 node_modules/
 npm-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 .next/
-.out/
-.expo/
-.vercel/
-.parcel-cache/
+.nuxt/
+out/
+.storybook-out/
+coverage/
+vite-cache/
+vite.config.timestamp-*.mjs
 
-# ---- Env files (keep only examples) ----
+# Frontend build artifacts
+dist/
+build/
+
+# --------------------
+# Env / Secrets
+# --------------------
 .env
 .env.*
-!.env.example
-!.env.local.example
+*.local
+*.secret
+*.secrets
+secrets/
 **/.env
-**/.env.*
-!**/.env.example
-!**/.env.local.example
 
-# ---- App data ----
-.cache/
-**/.cache/
-data/tmp/
-logs/
-*.log
-
-# ---- Scraper artifacts ----
-scrapers/**/.cache/
-downloads/
-tmp/
-
-# ---- Docker/Compose ----
-docker/*.log
-docker/*.env
+# --------------------
+# Docker & Compose
+# --------------------
+docker-data/
 .docker/
+*.pid
+*.pid.lock
+
+# --------------------
+# Data / Caches (scrapers, spotchecks, tmp)
+# --------------------
+data/
+data_tmp/
+tmp/
+temp/
+cache/
+.scraper_cache/
+.scrape_cache/
+downloads/
+files/
+__workdir__/
+artifacts/
+
+# PDFs or large docs from scraping (use LFS if you must keep)
+*.pdf
+*.docx
+*.xlsx
+*.csv
+
+# SQLite / lightweight DBs
+*.db
+*.sqlite
+*.sqlite3
+
+# --------------------
+# OpenAPI / Redocly (generated)
+# --------------------
+openapi/generated/
+redoc-static/
