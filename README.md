@@ -29,18 +29,25 @@ Scrape and ingest **public regulatory sources** (HTML & PDF), normalize them, de
   - [Admin API](#admin-api)
   - [Documents API](#documents-api)
   - [Scripts \& Make Targets](#scripts--make-targets)
-    - [Handy scripts (when present)](#handy-scripts-when-present)
-    - [Make (add these to your `Makefile` if desired)](#make-add-these-to-your-makefile-if-desired)
+    - [Handy scripts](#handy-scripts)
+    - [Make (optional)](#make-optional)
   - [Configuration](#configuration)
   - [Testing](#testing)
   - [Troubleshooting](#troubleshooting)
   - [Roadmap](#roadmap)
+  - [Quick API ops (curl)](#quick-api-ops-curl)
+    - [Seed / activate sources from JSON](#seed--activate-sources-from-json)
+    - [Ingest (run all active scrapers once)](#ingest-run-all-active-scrapers-once)
+    - [Cleanup (drop noise)](#cleanup-drop-noise)
+    - [Source management](#source-management)
+    - [Documents API](#documents-api-1)
+    - [Dev UI](#dev-ui)
 
 ---
 
 ## Highlights
 
-* **Hundreds of scrapers** (federal + all 50 states) generated/organized under `scrapers/…`
+* **Hundreds of scrapers** (federal + all 50 states) organized in `scrapers/…`
 * **Admin API**: ingest, cleanup, toggle/activate sources, bulk ops
 * **Filters** to drop nav/noise links (`mailto`, `tel`, fragments, “Home”, etc.)
 * **HTML & PDF** pipelines (BeautifulSoup + PDF extraction)
@@ -51,18 +58,19 @@ Scrape and ingest **public regulatory sources** (HTML & PDF), normalize them, de
 
 ## Repo Layout
 
-```
+```text
 regulatory-data-bridge/
   app/                 # FastAPI app (main.py, routers, services, db)
   scrapers/            # Generated scrapers (federal/ + state/<abbr>/...)
-  docs/                # API notes & curl examples
-  openapi/             # OpenAPI specs (federal/state/internal)
+  state-website-data/  # JSON sources (single source of truth)
+  tools/               # helper scripts (upsert/activate/etc.)
+  tests/
   requirements.txt
-  Makefile.mak
-  dev.db               # Default SQLite dev database
-```
+  Makefile             # optional
+  dev.db               # default SQLite dev database (ignored in prod)
+````
 
-> The API entrypoint is `app/main.py`. Seed helpers live under `app/seeds/`. Routers for `/admin`, `/documents`, etc. are in `app/routers/`.&#x20;
+> API entrypoint: `app/main.py`. Routers under `app/routers/` (`/admin`, `/documents`, …).
 
 ---
 
@@ -79,7 +87,7 @@ regulatory-data-bridge/
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate        # macOS/Linux
-python -m pip install -U pip
+python3 -m pip install -U pip
 pip install -r requirements.txt
 ```
 
@@ -95,11 +103,10 @@ find . -name "*.pyc" -delete
 
 ### 3) Seed sources
 
-Register all sources (federal + states) into the DB:
+Register all state/federal sources from JSON into the DB:
 
 ```bash
-export PYTHONPATH=.
-python app/seeds/seed_sources.py
+python3 tools/upsert_state_sites.py --file ./state-website-data/state-website-data.json --commit-per-state
 ```
 
 ### 4) Run the API
@@ -115,24 +122,16 @@ uvicorn app.main:app --reload --port 8000
 
 ### A) Activate all sources
 
-**Option 1 — bulk toggle (if endpoint exists):**
+**Option 1 — bulk toggle endpoint (if available in your build):**
 
 ```bash
 curl -s -X POST "http://127.0.0.1:8000/admin/sources/activate-all" | jq
 ```
 
-**Option 2 — one-liner via Python (always works):**
+**Option 2 — helper script:**
 
 ```bash
-PYTHONPATH=. python - <<'PY'
-from app.db.session import get_engine, get_session
-from app.db.models import Source
-engine = get_engine()
-with get_session(engine) as db:
-    n = db.query(Source).update({Source.active: True})
-    db.commit()
-    print(f"Activated {n} sources.")
-PY
+python3 tools/activate_sources.py --seed
 ```
 
 ### B) Ingest everything (cached where possible)
@@ -147,14 +146,6 @@ curl -s -X POST "http://127.0.0.1:8000/admin/ingest" | jq
 curl -s -X POST "http://127.0.0.1:8000/admin/ingest?force=true" | jq
 ```
 
-**Target specific states/patterns (if supported in your build):**
-
-```bash
-curl -s "http://127.0.0.1:8000/admin/scrape-all?state=tx,ca,co&pattern=fire&limit=5&force=true" | jq
-```
-
-> Admin/ingest & sources routers are under `app/routers/`. Services live under `app/services/ingest.py`.&#x20;
-
 ---
 
 ## Admin API
@@ -165,17 +156,12 @@ curl -s "http://127.0.0.1:8000/admin/scrape-all?state=tx,ca,co&pattern=fire&limi
 * **Toggle a source**
   `POST /admin/sources/toggle?name=...&active=true|false`
 
-* **(Optional) Bulk activate**
-  `POST /admin/sources/activate-all`
-
 * **Cleanup helpers** (drop noisy links/titles):
 
   * `POST /admin/cleanup/fragment-only`
   * `POST /admin/cleanup/trailing-hash`
   * `POST /admin/cleanup/non-http`
   * `POST /admin/cleanup/titles-exact?title=Home`
-
-> See `docs/curl-scrapers.md` for concrete command examples.&#x20;
 
 ---
 
@@ -187,43 +173,39 @@ curl -s "http://127.0.0.1:8000/admin/scrape-all?state=tx,ca,co&pattern=fire&limi
 * **Export CSV**
   `GET /documents/export.csv?jurisdiction=CO&limit=500`
 
-Routers: `app/routers/documents.py`.&#x20;
-
 ---
 
 ## Scripts & Make Targets
 
-### Handy scripts (when present)
+### Handy scripts
 
-Run scripts as modules so imports resolve from repo root:
+Run scripts as **modules** so imports resolve from repo root:
 
 ```bash
-python -m scripts.run_all_scrapers --only-updated
-python -m scripts.run_all_scrapers --state "TX,CA" --pattern fire --limit 5
+python3 -m scripts.run_all_scrapers --only-updated
+python3 -m scripts.run_all_scrapers --state "TX,CA" --pattern fire --limit 5
 ```
 
-If you run scripts directly, set `PYTHONPATH=.`.
+### Make (optional)
 
-### Make (add these to your `Makefile` if desired)
+> Note: Make requires **TAB** characters before command lines.
 
 ```makefile
 install:
-\tpip install -r requirements.txt
+	python3 -m pip install -r requirements.txt
 
 api:
-\tuvicorn app.main:app --reload --port 8000
+	uvicorn app.main:app --reload --port 8000
 
 seed:
-\tPYTHONPATH=. python app/seeds/seed_sources.py
+	python3 tools/upsert_state_sites.py --file ./state-website-data/state-website-data.json --commit-per-state
 
 activate-all:
-\tPYTHONPATH=. python - <<'PY'\nfrom app.db.session import get_engine, get_session\nfrom app.db.models import Source\nengine = get_engine()\nwith get_session(engine) as db:\n    n = db.query(Source).update({Source.active: True})\n    db.commit()\n    print(f"Activated {n} sources.")\nPY
+	python3 tools/activate_sources.py --seed
 
 ingest:
-\tcurl -s -X POST "http://127.0.0.1:8000/admin/ingest" | jq
+	curl -s -X POST "http://127.0.0.1:8000/admin/ingest" | jq
 ```
-
-> There’s a `Makefile.mak` in the repo you can reference/merge.&#x20;
 
 ---
 
@@ -231,10 +213,7 @@ ingest:
 
 * **Settings**: `app/core/settings.py` (envs, timeouts, CORS, etc.)
 * **Database**: `app/db/` (models, session, CRUD; default dev uses `dev.db`)
-* **Scraper base**: `scrapers/_base.py`, plus domain/state subpackages
-* **OpenAPI**: `openapi/` for internal + federal/state specs
-
-
+* **Source list**: `state-website-data/state-website-data.json` (single source of truth)
 
 ---
 
@@ -242,21 +221,16 @@ ingest:
 
 ```bash
 pytest -v
-# or run focused tests (spotcheck, export csv)
+# or run focused tests
 pytest -v tests/test_spotcheck.py tests/test_export_csv.py
 ```
-
-Common failure hints:
-
-* “No valid docs” → run cleanup endpoints; check filters
-* PDF text missing → ensure `pdfminer.six` is installed
 
 ---
 
 ## Troubleshooting
 
 * **`ModuleNotFoundError: scrapers` when running a script**
-  Run from repo root with module mode: `python -m scripts.run_all_scrapers …`
+  Run from repo root with module mode: `python3 -m scripts.run_all_scrapers …`
   or set `PYTHONPATH=.`. Add `__init__.py` to packages if missing.
 
 * **`'html' is not a package` on startup**
@@ -278,8 +252,6 @@ Common failure hints:
 * **Speed tips**
   Use `--only-updated` in scripts, or default cached ingest; reserve `force=true` for spot re-runs.
 
-
-
 ---
 
 ## Roadmap
@@ -291,3 +263,64 @@ Common failure hints:
 * NFPA 30 & **IFC** adoption/notice coverage expansion
 
 ---
+
+## Quick API ops (curl)
+
+Tip: install `jq` for pretty JSON.
+Optional: set a base URL:
+
+```bash
+export BASE=http://127.0.0.1:8000
+```
+
+### Seed / activate sources from JSON
+
+```bash
+python3 tools/upsert_state_sites.py --file ./state-website-data/state-website-data.json --commit-per-state
+```
+
+### Ingest (run all active scrapers once)
+
+```bash
+curl -s -X POST ${BASE:-http://127.0.0.1:8000}/admin/ingest | jq .
+```
+
+### Cleanup (drop noise)
+
+```bash
+# Bad fragments / trailing hashes / non-http schemes
+curl -s -X POST ${BASE:-http://127.0.0.1:8000}/admin/cleanup/fragment-only | jq .
+curl -s -X POST ${BASE:-http://127.0.0.1:8000}/admin/cleanup/trailing-hash | jq .
+curl -s -X POST ${BASE:-http://127.0.0.1:8000}/admin/cleanup/non-http | jq .
+
+# Common nav titles
+curl -s -X POST "${BASE:-http://127.0.0.1:8000}/admin/cleanup/titles-exact?title=Home" | jq .
+curl -s -X POST "${BASE:-http://127.0.0.1:8000}/admin/cleanup/titles-exact?title=Announcements" | jq .
+curl -s -X POST "${BASE:-http://127.0.0.1:8000}/admin/cleanup/titles-exact?title=About%20Us" | jq .
+```
+
+### Source management
+
+```bash
+# Toggle a single source (name must be URL-encoded)
+curl -s -X POST "${BASE:-http://127.0.0.1:8000}/admin/sources/toggle?name=CA%20%E2%80%93%20osfm.fire.ca.gov%2Fwhat-we-do%2Fcode-development-and-analysis&active=false" | jq .
+
+# Upsert a single source manually
+curl -s -X POST ${BASE:-http://127.0.0.1:8000}/admin/sources/upsert \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Example","url":"https://example.com/news","jurisdiction":"EX","type":"html","active":true}' | jq .
+```
+
+### Documents API
+
+```bash
+# Browse a few docs
+curl -s "${BASE:-http://127.0.0.1:8000}/documents?limit=10" | jq .
+
+# Export CSV (downloaded to current directory)
+curl -s "${BASE:-http://127.0.0.1:8000}/documents/export.csv?jurisdiction=TX&limit=500" -o out_TX.csv
+```
+
+### Dev UI
+
+* Swagger UI: `http://127.0.0.1:8000/docs`
