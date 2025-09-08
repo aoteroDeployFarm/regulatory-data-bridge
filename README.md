@@ -1,6 +1,13 @@
 # Regulatory Data Bridge
 
-Scrape and ingest **public regulatory sources** (HTML & PDF), normalize them, detect changes, and serve them via a FastAPI backend. Designed for downstream **RAG (ChatGPT/Gemini)**, monitoring, and **alerts**.
+Scrape and ingest **public regulatory sources** (HTML & PDF), normalize them, detect changes/diffs, and serve them via a **FastAPI** backend. Built for downstream **RAG** (ChatGPT/Gemini), monitoring, dashboards, and **alerts**.
+
+<p align="center">
+  <img alt="Python" src="https://img.shields.io/badge/Python-3.11%2B-blue">
+  <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-ready-brightgreen">
+  <img alt="Tests" src="https://img.shields.io/badge/pytest-passing-informational">
+  <img alt="License" src="https://img.shields.io/badge/License-MIT-lightgrey">
+</p>
 
 ---
 
@@ -9,26 +16,23 @@ Scrape and ingest **public regulatory sources** (HTML & PDF), normalize them, de
 - [Regulatory Data Bridge](#regulatory-data-bridge)
   - [Table of Contents](#table-of-contents)
   - [Highlights](#highlights)
-  - [Quick Start](#quick-start)
-    - [0. Prerequisites](#0-prerequisites)
-    - [1. Setup](#1-setup)
-    - [2. Run the API (dev)](#2-run-the-api-dev)
-    - [3. (Optional) Environment](#3-optional-environment)
-  - [Project Layout](#project-layout)
-  - [Configuration](#configuration)
+  - [Repo Layout](#repo-layout)
+  - [Quick Start (dev)](#quick-start-dev)
+    - [0) Prereqs](#0-prereqs)
+    - [1) Fresh virtualenv](#1-fresh-virtualenv)
+    - [2) Fix stdlib name-clash (one-time)](#2-fix-stdlib-name-clash-one-time)
+    - [3) Seed sources](#3-seed-sources)
+    - [4) Run the API](#4-run-the-api)
+  - [Activate \& Run All 50 States](#activate--run-all-50-states)
+    - [A) Activate all sources](#a-activate-all-sources)
+    - [B) Ingest everything (cached where possible)](#b-ingest-everything-cached-where-possible)
   - [Admin API](#admin-api)
-    - [Ingest](#ingest)
-    - [Sources](#sources)
-    - [Cleanup](#cleanup)
-  - [Filters](#filters)
   - [Documents API](#documents-api)
+  - [Scripts \& Make Targets](#scripts--make-targets)
+    - [Handy scripts (when present)](#handy-scripts-when-present)
+    - [Make (add these to your `Makefile` if desired)](#make-add-these-to-your-makefile-if-desired)
+  - [Configuration](#configuration)
   - [Testing](#testing)
-  - [Scripts](#scripts)
-    - [Run all scrapers](#run-all-scrapers)
-    - [Cleanup utility](#cleanup-utility)
-  - [NFPA 30 \& IFC Coverage](#nfpa-30--ifc-coverage)
-  - [GitHub Issues Import](#github-issues-import)
-  - [Makefile](#makefile)
   - [Troubleshooting](#troubleshooting)
   - [Roadmap](#roadmap)
 
@@ -36,275 +40,254 @@ Scrape and ingest **public regulatory sources** (HTML & PDF), normalize them, de
 
 ## Highlights
 
-* **Generator → hundreds of scrapers** from a single JSON config (`state-website-data/state-website-data.json`)
-* **Admin API** for ingestion, cleanup, and source management
-* **Filters** that drop noisy/non-doc links (e.g. *Home*, *Contact Us*, `mailto:`, `tel:`, fragments)
-* **HTML & PDF support**
-
-  * HTML: BeautifulSoup extraction + JSON-LD fallback
-  * PDF: text extraction (`pypdf` / `pdfminer`)
-* **Per-scraper caching** (no collisions; safe re-runs)
-* **Testing suite** with spot-checks and CSV validation
-* **Cleanup tools** to prune non-documents automatically
-* **NFPA 30 & IFC coverage plan** (public adoption & notice pages only)
+* **Hundreds of scrapers** (federal + all 50 states) generated/organized under `scrapers/…`
+* **Admin API**: ingest, cleanup, toggle/activate sources, bulk ops
+* **Filters** to drop nav/noise links (`mailto`, `tel`, fragments, “Home”, etc.)
+* **HTML & PDF** pipelines (BeautifulSoup + PDF extraction)
+* **Per-source caching** and optional `force` refresh
+* **CSV export** for downstream analytics and BI tools
 
 ---
 
-## Quick Start
-
-### 0. Prerequisites
-
-* Python **3.11+** (3.12 is fine)
-* `jq` (for pretty JSON in shell), optional
-* `gh` (GitHub CLI), optional
-
-### 1. Setup
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate   # (macOS/Linux)
-# .\.venv\Scripts\Activate.ps1   # (Windows PowerShell)
-
-python3 -m pip install -U pip
-python3 -m pip install -r requirements.txt
-```
-
-### 2. Run the API (dev)
-
-```bash
-python3 -m uvicorn app.main:app --reload
-# visit http://127.0.0.1:8000/docs
-```
-
-### 3. (Optional) Environment
-
-`.env` file:
-
-```ini
-APP_ENV=dev
-APP_HOST=127.0.0.1
-APP_PORT=8000
-CORS_ALLOWED_ORIGINS=http://127.0.0.1:5173
-HTTP_TIMEOUT_SECONDS=30
-DEFAULT_USER_AGENT=regulatory-data-bridge/1.0 (+https://example.com)
-```
-
----
-
-## Project Layout
+## Repo Layout
 
 ```
 regulatory-data-bridge/
-├─ app/
-│  ├─ main.py                 # FastAPI bootstrap
-│  ├─ routers/
-│  │  ├─ admin.py             # ingest, cleanup, toggle, upsert
-│  │  ├─ documents.py         # search + export.csv
-│  │  └─ sources.py           # source listing
-│  ├─ scrapers/
-│  │  ├─ html.py              # HTML ingestion
-│  │  ├─ rss.py               # RSS ingestion
-│  │  └─ http.py              # session helpers
-│  ├─ lib/
-│  │  └─ filters.py           # URL/title filtering rules
-│  ├─ db/                     # models, session, crud
-│  └─ services/
-│     └─ ingest.py            # ingestion orchestrator
-├─ scripts/
-│  ├─ admin_client.py
-│  ├─ run_all_scrapers.py
-│  ├─ generate_scrapers_from_json.py
-│  └─ full_cleanup.py
-├─ state-website-data/
-│  └─ state-website-data.json
-├─ tests/
-│  ├─ test_spotcheck.py       # doc validity
-│  └─ test_export_csv.py      # CSV export validity
-├─ settings.py
-├─ requirements.txt
-└─ README.md
+  app/                 # FastAPI app (main.py, routers, services, db)
+  scrapers/            # Generated scrapers (federal/ + state/<abbr>/...)
+  docs/                # API notes & curl examples
+  openapi/             # OpenAPI specs (federal/state/internal)
+  requirements.txt
+  Makefile.mak
+  dev.db               # Default SQLite dev database
+```
+
+> The API entrypoint is `app/main.py`. Seed helpers live under `app/seeds/`. Routers for `/admin`, `/documents`, etc. are in `app/routers/`.&#x20;
+
+---
+
+## Quick Start (dev)
+
+### 0) Prereqs
+
+* Python **3.11+**
+* `pip`, `venv`
+* (optional) `jq` for pretty JSON in shell
+
+### 1) Fresh virtualenv
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate        # macOS/Linux
+python -m pip install -U pip
+pip install -r requirements.txt
+```
+
+### 2) Fix stdlib name-clash (one-time)
+
+If a top-level `html.py` exists, rename it (it shadows Python’s `html` stdlib and breaks FastAPI/Starlette):
+
+```bash
+mv html.py html_utils.py
+find . -name "__pycache__" -type d -prune -exec rm -rf {} +
+find . -name "*.pyc" -delete
+```
+
+### 3) Seed sources
+
+Register all sources (federal + states) into the DB:
+
+```bash
+export PYTHONPATH=.
+python app/seeds/seed_sources.py
+```
+
+### 4) Run the API
+
+```bash
+uvicorn app.main:app --reload --port 8000
+# http://127.0.0.1:8000/docs
 ```
 
 ---
 
-## Configuration
+## Activate & Run All 50 States
 
-Sources live in `state-website-data/state-website-data.json`.
+### A) Activate all sources
 
-```json
-{
-  "Texas": [
-    "https://www.tdi.texas.gov/fire/fmfsinotices.html",
-    "https://www.tceq.texas.gov/downloads/rules/adoptions/22015338_ado.pdf"
-  ],
-  "California": [
-    "https://osfm.fire.ca.gov/what-we-do/code-development-and-analysis"
-  ],
-  "Florida": [
-    "https://myfloridacfo.com/division/sfm/bfp/florida-fire-prevention-code"
-  ]
-}
-```
-
-Regenerate scrapers:
+**Option 1 — bulk toggle (if endpoint exists):**
 
 ```bash
-python3 scripts/generate_scrapers_from_json.py \
-  --config ./state-website-data/state-website-data.json \
-  --outdir ./scrapers --overwrite
+curl -s -X POST "http://127.0.0.1:8000/admin/sources/activate-all" | jq
 ```
+
+**Option 2 — one-liner via Python (always works):**
+
+```bash
+PYTHONPATH=. python - <<'PY'
+from app.db.session import get_engine, get_session
+from app.db.models import Source
+engine = get_engine()
+with get_session(engine) as db:
+    n = db.query(Source).update({Source.active: True})
+    db.commit()
+    print(f"Activated {n} sources.")
+PY
+```
+
+### B) Ingest everything (cached where possible)
+
+```bash
+curl -s -X POST "http://127.0.0.1:8000/admin/ingest" | jq
+```
+
+**Force a fresh pass (ignore cache):**
+
+```bash
+curl -s -X POST "http://127.0.0.1:8000/admin/ingest?force=true" | jq
+```
+
+**Target specific states/patterns (if supported in your build):**
+
+```bash
+curl -s "http://127.0.0.1:8000/admin/scrape-all?state=tx,ca,co&pattern=fire&limit=5&force=true" | jq
+```
+
+> Admin/ingest & sources routers are under `app/routers/`. Services live under `app/services/ingest.py`.&#x20;
 
 ---
 
 ## Admin API
 
-### Ingest
+* **Ingest all active sources**
+  `POST /admin/ingest` → `{ ok, count, updated, failed, ... }`
 
-```bash
-curl -s -X POST http://127.0.0.1:8000/admin/ingest | jq
-```
+* **Toggle a source**
+  `POST /admin/sources/toggle?name=...&active=true|false`
 
-### Sources
+* **(Optional) Bulk activate**
+  `POST /admin/sources/activate-all`
 
-```bash
-# toggle
-curl -s -X POST "http://127.0.0.1:8000/admin/sources/toggle?name=Texas%20RRC%20–%20News&active=false" | jq
+* **Cleanup helpers** (drop noisy links/titles):
 
-# upsert
-curl -s -X POST http://127.0.0.1:8000/admin/sources/upsert \
-  -H "Content-Type: application/json" \
-  -d '{"name":"Example","url":"https://example.com/news","jurisdiction":"EX","type":"html","active":true}'
-```
+  * `POST /admin/cleanup/fragment-only`
+  * `POST /admin/cleanup/trailing-hash`
+  * `POST /admin/cleanup/non-http`
+  * `POST /admin/cleanup/titles-exact?title=Home`
 
-### Cleanup
-
-```bash
-# Drop bad schemes/links
-curl -s -X POST http://127.0.0.1:8000/admin/cleanup/fragment-only | jq
-curl -s -X POST http://127.0.0.1:8000/admin/cleanup/trailing-hash | jq
-curl -s -X POST http://127.0.0.1:8000/admin/cleanup/non-http | jq
-
-# Drop nav titles
-curl -s -X POST "http://127.0.0.1:8000/admin/cleanup/titles-exact?title=Home" | jq
-curl -s -X POST "http://127.0.0.1:8000/admin/cleanup/titles-exact?title=Skip%20To%20Main%20Content" | jq
-```
-
----
-
-## Filters
-
-Defined in `app/lib/filters.py`.
-
-* Block: `mailto:`, `tel:`, `javascript:`, `#`
-* Block paths: `/about`, `/contact`, `/forms`, `/resources`, `/site-policies`
-* Block titles: *Home*, *About Us*, *Announcements*
-* Allow: `/news`, `/press`, `/updates`, `/rulemaking`, `/notices`, `/library`
-* Require either doc-like path hints or deep path structure
+> See `docs/curl-scrapers.md` for concrete command examples.&#x20;
 
 ---
 
 ## Documents API
 
-Search:
+* **Search**
+  `GET /documents?limit=20&jurisdiction=TX`
+
+* **Export CSV**
+  `GET /documents/export.csv?jurisdiction=CO&limit=500`
+
+Routers: `app/routers/documents.py`.&#x20;
+
+---
+
+## Scripts & Make Targets
+
+### Handy scripts (when present)
+
+Run scripts as modules so imports resolve from repo root:
 
 ```bash
-curl -s "http://127.0.0.1:8000/documents?limit=10" | jq
+python -m scripts.run_all_scrapers --only-updated
+python -m scripts.run_all_scrapers --state "TX,CA" --pattern fire --limit 5
 ```
 
-Export CSV:
+If you run scripts directly, set `PYTHONPATH=.`.
 
-```bash
-curl -s "http://127.0.0.1:8000/documents/export.csv?jurisdiction=TX&limit=200" -o out.csv
+### Make (add these to your `Makefile` if desired)
+
+```makefile
+install:
+\tpip install -r requirements.txt
+
+api:
+\tuvicorn app.main:app --reload --port 8000
+
+seed:
+\tPYTHONPATH=. python app/seeds/seed_sources.py
+
+activate-all:
+\tPYTHONPATH=. python - <<'PY'\nfrom app.db.session import get_engine, get_session\nfrom app.db.models import Source\nengine = get_engine()\nwith get_session(engine) as db:\n    n = db.query(Source).update({Source.active: True})\n    db.commit()\n    print(f"Activated {n} sources.")\nPY
+
+ingest:
+\tcurl -s -X POST "http://127.0.0.1:8000/admin/ingest" | jq
 ```
+
+> There’s a `Makefile.mak` in the repo you can reference/merge.&#x20;
+
+---
+
+## Configuration
+
+* **Settings**: `app/core/settings.py` (envs, timeouts, CORS, etc.)
+* **Database**: `app/db/` (models, session, CRUD; default dev uses `dev.db`)
+* **Scraper base**: `scrapers/_base.py`, plus domain/state subpackages
+* **OpenAPI**: `openapi/` for internal + federal/state specs
+
+
 
 ---
 
 ## Testing
 
 ```bash
+pytest -v
+# or run focused tests (spotcheck, export csv)
 pytest -v tests/test_spotcheck.py tests/test_export_csv.py
 ```
 
-* **Spotcheck**: verifies valid docs exist per jurisdiction
-* **CSV**: validates headers, row quality, URL/title checks
+Common failure hints:
 
-Failures often indicate stray nav links (*Home*, `mailto:`, `#`, etc.).
-
----
-
-## Scripts
-
-### Run all scrapers
-
-```bash
-python3 scripts/run_all_scrapers.py --only-updated
-```
-
-### Cleanup utility
-
-```bash
-python3 scripts/full_cleanup.py --base-url http://127.0.0.1:8000
-```
-
----
-
-## NFPA 30 & IFC Coverage
-
-* **Seeded**: TX, CA, FL
-* **Wave A**: OK, LA, NM, CO, ND, PA, OH, WY, WV, UT, AZ
-* Add 10–12 states per wave
-
-Focus:
-
-* Fire Marshal adoption pages
-* Admin Code adoptions
-* Registers & notices
-
----
-
-## GitHub Issues Import
-
-```bash
-export GITHUB_TOKEN=ghp_xxx
-python3 scripts/import_issues.py --file issues_nfpa_ifc.json --repo OWNER/REPO
-```
-
----
-
-## Makefile
-
-```makefile
-install:
-	python3 -m pip install -r requirements.txt
-api:
-	python3 -m uvicorn app.main:app --reload
-gen:
-	python3 scripts/generate_scrapers_from_json.py --config ./state-website-data/state-website-data.json --outdir ./scrapers --overwrite
-run-scrapers:
-	python3 scripts/run_all_scrapers.py --only-updated
-```
+* “No valid docs” → run cleanup endpoints; check filters
+* PDF text missing → ensure `pdfminer.six` is installed
 
 ---
 
 ## Troubleshooting
 
-* **SQLite `ILIKE` error** → replaced with `LIKE`
-* **Bad links (mailto, tel, #)** → run cleanup endpoints
-* **Empty PDFs** → install `pdfminer.six`
-* **Reload loops** → check router syntax
+* **`ModuleNotFoundError: scrapers` when running a script**
+  Run from repo root with module mode: `python -m scripts.run_all_scrapers …`
+  or set `PYTHONPATH=.`. Add `__init__.py` to packages if missing.
+
+* **`'html' is not a package` on startup**
+  You have a local `html.py` shadowing the stdlib. Rename it (e.g., `html_utils.py`) and clear `__pycache__`.
+
+* **Hot-reload loops**
+  Syntax errors in a router or service; check `app/routers/*` and `app/services/ingest.py`.
+
+* **Push errors / giant commits**
+  Update `.gitignore`, then:
+
+  ```bash
+  git rm -r --cached .
+  git add .
+  git commit -m "chore: clean repo with updated .gitignore"
+  git push origin main
+  ```
+
+* **Speed tips**
+  Use `--only-updated` in scripts, or default cached ingest; reserve `force=true` for spot re-runs.
+
+
 
 ---
 
 ## Roadmap
 
-* Finish Wave A ingestion & cleanup
-* Expand filter rules for noisy sites
-* Add `/ask` RAG endpoint with citations
-* Slack/webhook alerts
-* Web dashboard + mobile app
+* Wave-by-wave state hardening (filters, dedupe, PDF robustness)
+* `/ask` RAG endpoint with citations
+* Slack/webhook alerting on new changes
+* Web dashboard (docs stream, diffs, filters, CSV exports)
+* NFPA 30 & **IFC** adoption/notice coverage expansion
 
 ---
-
-✅ This is now a **comprehensive README with TOC**.
-
-Want me to also generate a **badge block at the very top** (Python version, pytest, license, etc.) so it looks more professional for GitHub?
