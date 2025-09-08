@@ -34,6 +34,9 @@ env/
 **/.venv/
 **/venv/
 
+# Jupyter
+.ipynb_checkpoints/
+
 # Packaging / Build
 build/
 dist/
@@ -90,6 +93,8 @@ build/
 *.secrets
 secrets/
 **/.env
+# keep an example in version control if you have one:
+!.env.example
 
 # --------------------
 # Docker & Compose
@@ -114,16 +119,34 @@ files/
 __workdir__/
 artifacts/
 
-# PDFs or large docs from scraping (use LFS if you must keep)
-*.pdf
-*.docx
-*.xlsx
-*.csv
+# ---- Scraped/exported docs (SCOPED) ----
+# (Safer than ignoring *.pdf/*.csv globally.)
+downloads/**/*.pdf
+downloads/**/*.docx
+downloads/**/*.xlsx
+downloads/**/*.csv
+data/**/*.pdf
+data/**/*.docx
+data/**/*.xlsx
+data/**/*.csv
+artifacts/**/*.pdf
+artifacts/**/*.docx
+artifacts/**/*.xlsx
+artifacts/**/*.csv
+# allow docs kept under docs/ or examples/:
+!docs/**/*.pdf
+!docs/**/*.csv
+!examples/**/*.pdf
+!examples/**/*.csv
 
+# --------------------
 # SQLite / lightweight DBs
+# --------------------
 *.db
 *.sqlite
 *.sqlite3
+*.sqlite-shm
+*.sqlite-wal
 
 # --------------------
 # OpenAPI / Redocly (generated)
