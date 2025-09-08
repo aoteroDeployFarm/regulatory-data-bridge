@@ -1,160 +1,325 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
-Send a digest of document changes to email and/or Slack.
+Send a digest email with:
+  1) CSV attachment of recent regulatory changes
+  2) Markdown preview in the email body (from /changes?format=md)
 
-Examples:
-  # Print last 7 days of CO changes
-  python3 tools/send_digest.py --jur CO --days 7
-
-  # Email yesterday's CO changes (needs SMTP_* envs)
-  SMTP_HOST=smtp.gmail.com SMTP_PORT=587 SMTP_USER=you@gmail.com SMTP_PASS='app_pw' SMTP_FROM=you@gmail.com \
-  python3 tools/send_digest.py --jur CO --days 1 --to customer@example.com
-
-  # Slack (Incoming Webhook)
-  python3 tools/send_digest.py --jur CO --days 1 --slack https://hooks.slack.com/services/XXX/YYY/ZZZ
-
-  # Incremental mode: only send changes since the last run (state stored in a file)
-  python3 tools/send_digest.py --jur CO --since-file .digest_since_co.txt --to customer@example.com
+- Works for ANY state via --jur (e.g., CO, CA, TX)
+- Prefers /changes/export.csv; falls back to /documents/export.csv
+- --since or --since-file (updates since-file to today on success)
+- SMTP with TLS/SSL using certifi CA bundle
+- Optional X-API-Key via --api-key or env API_KEY
+- JSON status printed to stdout (safe for tee/cron)
 """
-from __future__ import annotations
 
-import json
+import argparse
 import os
+import sys
+import json
 import smtplib
-from email.mime.text import MIMEText
-from datetime import datetime, timedelta
-from typing import List, Optional
-from urllib.parse import urlencode
-from urllib.request import Request, urlopen
+import ssl
+import datetime
+import io
+import csv
+import html
+from typing import Optional, Tuple, List
+
+import requests
+import certifi
+from email.message import EmailMessage
+
+# ---------- Defaults / ENV ----------
+ENV = os.environ
+DEFAULT_BASE = ENV.get("API_BASE", "http://127.0.0.1:8000")
+
+DEF_SMTP_HOST = ENV.get("SMTP_HOST", "smtp.gmail.com")
+DEF_SMTP_PORT = int(ENV.get("SMTP_PORT", "587"))
+DEF_SMTP_USER = ENV.get("SMTP_USER", "")
+DEF_SMTP_PASS = ENV.get("SMTP_PASS", "")
+DEF_SMTP_TLS  = ENV.get("SMTP_TLS", "true").lower() in ("1", "true", "yes", "on")
+DEF_FROM_ADDR = ENV.get("FROM_ADDR", "no-reply@localhost")
+DEF_API_KEY   = ENV.get("API_KEY", None)  # optional X-API-Key for your API
 
 
-API = os.getenv("API_BASE", "http://127.0.0.1:8000")
+# ---------- Helpers ----------
+def today_iso() -> str:
+    return datetime.date.today().isoformat()
 
-
-def _read_since(since_file: str) -> Optional[str]:
+def read_since_from_file(path: Optional[str]) -> Optional[str]:
+    if not path or not os.path.exists(path):
+        return None
     try:
-        with open(since_file, "r", encoding="utf-8") as f:
-            s = f.read().strip()
-            return s or None
-    except FileNotFoundError:
+        with open(path, "r", encoding="utf-8") as f:
+            val = f.readline().strip()
+        datetime.date.fromisoformat(val)  # validate
+        return val
+    except Exception:
         return None
 
+def write_since_file(path: str, date_str: str) -> None:
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(date_str + "\n")
 
-def _write_since(since_file: str, iso_timestamp: str) -> None:
-    tmp = since_file + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as f:
-        f.write(iso_timestamp)
-    os.replace(tmp, since_file)
+def fetch_openapi(base: str, api_key: Optional[str]) -> dict:
+    headers = {"X-API-Key": api_key} if api_key else {}
+    r = requests.get(f"{base}/openapi.json", headers=headers, timeout=(10, 30))
+    r.raise_for_status()
+    return r.json()
 
+def route_exists(spec: dict, path: str) -> bool:
+    return path in spec.get("paths", {})
 
-def _iso_now() -> str:
-    # ISO8601 without timezone; matches FastAPI's default JSON for naive datetimes
-    return datetime.utcnow().isoformat(timespec="seconds")
+def get_changes_csv(base: str, jur: str, since: Optional[str], limit: int, api_key: Optional[str]) -> Tuple[bytes, str, str]:
+    """
+    Returns (csv_bytes, endpoint_used, url_used)
+    Tries /changes/export.csv first; falls back to /documents/export.csv if not present.
+    """
+    spec = fetch_openapi(base, api_key)
+    headers = {"X-API-Key": api_key} if api_key else {}
+    qs_since = f"&since={since}" if since else ""
 
+    if route_exists(spec, "/changes/export.csv"):
+        url = f"{base}/changes/export.csv?jurisdiction={jur.upper()}{qs_since}&limit={limit}"
+        ep  = "/changes/export.csv"
+    else:
+        # Fallback; may not support 'since'
+        url = f"{base}/documents/export.csv?jurisdiction={jur.upper()}&limit={limit}"
+        ep  = "/documents/export.csv"
 
-def fetch_changes(jur: str, *, since_iso: Optional[str], days: Optional[int], limit: int = 2000) -> List[dict]:
-    params = {"jurisdiction": jur.upper(), "limit": str(limit)}
-    if since_iso:
-        params["since"] = since_iso
-    elif days is not None:
-        since_dt = datetime.utcnow() - timedelta(days=days)
-        params["since"] = since_dt.strftime("%Y-%m-%d")
-    # else: API defaults to 7 days
-    url = f"{API}/changes?{urlencode(params)}"
-    with urlopen(url) as r:
-        return json.load(r)
+    r = requests.get(url, headers=headers, timeout=(10, 120))
+    r.raise_for_status()
+    return r.content, ep, url
 
+def get_changes_markdown(
+    base: str,
+    jur: str,
+    since: Optional[str],
+    group_by: Optional[str],
+    include_diff: bool,
+    limit: int,
+    api_key: Optional[str],
+) -> Optional[str]:
+    """
+    Fetches server-rendered markdown from /changes?format=md.
+    Returns markdown text or None if the route isn't available.
+    """
+    spec = fetch_openapi(base, api_key)
+    if not route_exists(spec, "/changes"):
+        return None
 
-def build_markdown(jur: str, rows: List[dict]) -> str:
-    if not rows:
-        return f"**{jur}** — no changes in the selected window."
-    lines = [f"## {jur} changes ({len(rows)})"]
-    for r in rows:
-        ts = str(r.get("fetched_at", ""))[:19].replace("T", " ")
-        title = (r.get("title") or "(untitled)").strip()
-        url = r.get("url") or ""
-        lines.append(f"- **{r['change_type']}** · {ts} · [{title}]({url})")
-    return "\n".join(lines)
+    headers = {"X-API-Key": api_key} if api_key else {}
+    params = {
+        "jurisdiction": jur.upper(),
+        "format": "md",
+        "limit": str(limit),
+    }
+    if since:
+        params["since"] = since
+    if group_by in ("source",):
+        params["group_by"] = group_by
+    if include_diff:
+        # repeated Query param style: include=diff
+        params["include"] = "diff"
 
+    r = requests.get(f"{base}/changes", headers=headers, params=params, timeout=(10, 60))
+    r.raise_for_status()
+    data = r.json()
+    # Our endpoint returns {"markdown": "..."} for md format
+    if isinstance(data, dict) and "markdown" in data:
+        return data["markdown"]
+    # If server returned plain string somehow
+    if isinstance(data, str):
+        return data
+    return None
 
-def latest_timestamp(rows: List[dict]) -> Optional[str]:
-    best: Optional[datetime] = None
-    best_raw: Optional[str] = None
-    for r in rows:
-        raw = str(r.get("fetched_at", "")).strip()
-        if not raw:
-            continue
-        # try a few parse shapes
-        parsed: Optional[datetime] = None
-        for fmt in ("%Y-%m-%dT%H:%M:%S.%f", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S"):
-            try:
-                parsed = datetime.strptime(raw, fmt)
-                break
-            except ValueError:
-                continue
-        if not parsed:
-            continue
-        if best is None or parsed > best:
-            best, best_raw = parsed, raw
-    return best_raw
+def count_csv_rows(csv_bytes: bytes) -> int:
+    try:
+        text = csv_bytes.decode("utf-8", errors="ignore")
+        buf = io.StringIO(text)
+        reader = csv.reader(buf)
+        rows = sum(1 for _ in reader)
+        return max(0, rows - 1)  # minus header
+    except Exception:
+        return 0
 
+def make_tls_context() -> ssl.SSLContext:
+    return ssl.create_default_context(cafile=certifi.where())
 
-def send_email(md: str, to_addr: str, subject: str):
-    host = os.getenv("SMTP_HOST")
-    port = int(os.getenv("SMTP_PORT", "587"))
-    user = os.getenv("SMTP_USER")
-    pwd = os.getenv("SMTP_PASS")
-    from_addr = os.getenv("SMTP_FROM", user or "no-reply@example.com")
+def build_html_body(plain_intro: str, md: Optional[str]) -> str:
+    intro_html = "<p>" + "<br/>".join(html.escape(line) for line in plain_intro.splitlines()) + "</p>"
+    if not md:
+        return f"<html><body>{intro_html}</body></html>"
+    # Show markdown in a pre block to preserve formatting (including ```diff blocks)
+    md_html = f"<h3>Markdown preview</h3><pre style='white-space:pre-wrap;font-family:ui-monospace,Menlo,Consolas,monospace'>{html.escape(md)}</pre>"
+    return f"<html><body>{intro_html}{md_html}</body></html>"
 
-    msg = MIMEText(md, "plain", "utf-8")
-    msg["Subject"] = subject
+def send_email_with_attachment(
+    to_addrs: List[str],
+    subject: str,
+    body_text_intro: str,
+    body_md: Optional[str],
+    attach_name: str,
+    attach_bytes: bytes,
+    smtp_host: str,
+    smtp_port: int,
+    smtp_user: str,
+    smtp_pass: str,
+    smtp_tls: bool,
+    from_addr: str,
+) -> None:
+    msg = EmailMessage()
     msg["From"] = from_addr
-    msg["To"] = to_addr
+    msg["To"] = ", ".join(to_addrs)
+    msg["Subject"] = subject
 
-    with smtplib.SMTP(host, port) as s:
-        s.starttls()
-        if user and pwd:
-            s.login(user, pwd)
-        s.sendmail(from_addr, [to_addr], msg.as_string())
+    # Plain text: intro + (optional) Markdown appended
+    if body_md:
+        msg.set_content(body_text_intro + "\n\n---\nMarkdown preview\n\n" + body_md)
+    else:
+        msg.set_content(body_text_intro)
+
+    # HTML alternative (to keep formatting nice in clients that support HTML)
+    html_part = build_html_body(body_text_intro, body_md)
+    msg.add_alternative(html_part, subtype="html")
+
+    # CSV attachment
+    msg.add_attachment(attach_bytes, maintype="text", subtype="csv", filename=attach_name)
+
+    # Send with TLS/SSL using certifi bundle
+    if smtp_port == 465:
+        ctx = make_tls_context()
+        with smtplib.SMTP_SSL(smtp_host, smtp_port, context=ctx) as s:
+            if smtp_user:
+                s.login(smtp_user, smtp_pass)
+            s.send_message(msg)
+        return
+
+    with smtplib.SMTP(smtp_host, smtp_port) as s:
+        if smtp_tls:
+            ctx = make_tls_context()
+            s.starttls(context=ctx)
+        if smtp_user:
+            s.login(smtp_user, smtp_pass)
+        s.send_message(msg)
 
 
-def send_slack(md: str, webhook: str):
-    body = json.dumps({"text": md}).encode("utf-8")
-    req = Request(webhook, data=body, headers={"Content-Type": "application/json"})
-    urlopen(req).read()
-
-
+# ---------- CLI ----------
 def main():
-    import argparse
+    ap = argparse.ArgumentParser(description="Send digest email with CSV attachment + Markdown preview.")
+    ap.add_argument("--jur", required=True, help="Jurisdiction/state code (e.g., CO, CA, TX)")
+    ap.add_argument("--to", required=True, nargs="+", help="Recipient email(s)")
+    ap.add_argument("--base", default=DEFAULT_BASE, help="API base URL (default: %(default)s)")
+    ap.add_argument("--since", default=None, help="YYYY-MM-DD explicit since date")
+    ap.add_argument("--since-file", default=None, help="Path to persist last-sent date; updated to today on success")
+    ap.add_argument("--subject", default=None, help="Email subject override")
+    ap.add_argument("--limit", type=int, default=25000, help="Max CSV rows to request (default: %(default)s)")
+    ap.add_argument("--api-key", default=DEF_API_KEY, help="Optional X-API-Key header (or set env API_KEY)")
 
-    ap = argparse.ArgumentParser(description="Send a digest of document changes.")
-    ap.add_argument("--jur", required=True, help="State code, e.g. CO")
-    ap.add_argument("--days", type=int, default=7, help="Lookback window in days (ignored if --since-file provided)")
-    ap.add_argument("--limit", type=int, default=2000, help="Max rows to retrieve")
-    ap.add_argument("--to", help="Email recipient address")
-    ap.add_argument("--slack", help="Slack Incoming Webhook URL")
-    ap.add_argument("--since-file", help="Path to a file storing the last sent timestamp (incremental mode)")
+    # Markdown embedding controls
+    ap.add_argument("--no-md", dest="embed_md", action="store_false", help="Disable Markdown preview in body")
+    ap.add_argument("--md-group-by", choices=["source"], default=None, help="Group markdown by 'source'")
+    ap.add_argument("--md-include-diff", action="store_true", help="Include short diff blocks in markdown preview")
+
+    # SMTP
+    ap.add_argument("--smtp-host", default=DEF_SMTP_HOST)
+    ap.add_argument("--smtp-port", type=int, default=DEF_SMTP_PORT)
+    ap.add_argument("--smtp-user", default=DEF_SMTP_USER)
+    ap.add_argument("--smtp-pass", default=DEF_SMTP_PASS)
+    ap.add_argument("--smtp-tls", action="store_true", default=DEF_SMTP_TLS,
+                    help="Use STARTTLS when port is not 465 (default based on env SMTP_TLS)")
+    ap.add_argument("--from-addr", default=DEF_FROM_ADDR)
+
     args = ap.parse_args()
 
-    since_iso = _read_since(args.since_file) if args.since_file else None
-    rows = fetch_changes(args.jur, since_iso=since_iso, days=(None if since_iso else args.days), limit=args.limit)
-    md = build_markdown(args.jur, rows)
-    subj = f"[Regulatory Bridge] {args.jur.upper()} changes ({'since '+since_iso if since_iso else f'last {args.days}d'}: {len(rows)})"
+    jur = args.jur.upper()
 
-    if args.to:
-        send_email(md, args.to, subj)
-        print(f"email sent to {args.to}")
-    if args.slack:
-        send_slack(md, args.slack)
-        print("slack sent")
-    if not args.to and not args.slack:
-        print(md)
+    # Resolve since → CLI > since-file
+    since = args.since or read_since_from_file(args.since_file)
 
-    # Update since-file to latest timestamp (or now if nothing returned)
+    # Fetch CSV
+    try:
+        csv_bytes, ep, url_used = get_changes_csv(args.base, jur, since, args.limit, args.api_key)
+    except Exception as e:
+        print(json.dumps({"ok": False, "step": "fetch_csv", "error": str(e)}), file=sys.stderr)
+        sys.exit(1)
+
+    rows = count_csv_rows(csv_bytes)
+
+    # Optionally fetch Markdown preview
+    md_text = None
+    md_included = False
+    if args.embed_md:
+        try:
+            md_text = get_changes_markdown(
+                base=args.base,
+                jur=jur,
+                since=since,
+                group_by=args.md_group_by,
+                include_diff=args.md_include_diff,
+                limit=min(args.limit, 2000),  # keep preview compact
+                api_key=args.api_key,
+            )
+            md_included = bool(md_text)
+        except Exception as e:
+            # Non-fatal: keep going with CSV-only
+            md_text = None
+            md_included = False
+            print(json.dumps({"ok": True, "warning": f"failed to fetch markdown preview: {e}"}))
+
+    subject = args.subject or f"{jur} regulatory changes – {today_iso()} (rows: {rows})"
+    intro = (
+        f"Hi,\n\n"
+        f"Attached are the latest {jur} regulatory changes as a CSV.\n\n"
+        f"Endpoint: {ep}\n"
+        f"URL: {url_used}\n"
+        f"Since: {since or 'N/A'}\n"
+        f"Rows: {rows}\n"
+    )
+    attach_name = f"{jur}_changes_{today_iso()}.csv"
+
+    # Send email
+    try:
+        send_email_with_attachment(
+            to_addrs=args.to,
+            subject=subject,
+            body_text_intro=intro,
+            body_md=md_text,
+            attach_name=attach_name,
+            attach_bytes=csv_bytes,
+            smtp_host=args.smtp_host,
+            smtp_port=args.smtp_port,
+            smtp_user=args.smtp_user,
+            smtp_pass=args.smtp_pass,
+            smtp_tls=args.smtp_tls,
+            from_addr=args.from_addr,
+        )
+    except Exception as e:
+        print(json.dumps({"ok": False, "step": "send_email", "error": str(e)}), file=sys.stderr)
+        sys.exit(1)
+
+    # Update since-file to today on success
+    since_file_updated = False
     if args.since_file:
-        new_since = latest_timestamp(rows) or _iso_now()
-        _write_since(args.since_file, new_since)
-        print(f"since-file updated -> {args.since_file}: {new_since}")
+        try:
+            write_since_file(args.since_file, today_iso())
+            since_file_updated = True
+        except Exception as e:
+            print(json.dumps({"ok": True, "warning": f"failed to update since-file: {e}"}))
+
+    print(json.dumps({
+        "ok": True,
+        "jur": jur,
+        "to": args.to,
+        "rows": rows,
+        "endpoint": ep,
+        "url": url_used,
+        "since": since,
+        "since_file": args.since_file,
+        "since_file_updated": since_file_updated,
+        "markdown_included": md_included
+    }, indent=2))
 
 
 if __name__ == "__main__":
