@@ -42,6 +42,9 @@ Scrape and ingest **public regulatory sources** (HTML & PDF), normalize them, de
     - [Source management](#source-management)
     - [Documents API](#documents-api-1)
     - [Dev UI](#dev-ui)
+  - [Scheduled runs (cron)](#scheduled-runs-cron)
+    - [1) Create the helper script](#1-create-the-helper-script)
+    - [2) Add cron entries](#2-add-cron-entries)
 
 ---
 
@@ -311,6 +314,8 @@ curl -s -X POST ${BASE:-http://127.0.0.1:8000}/admin/sources/upsert \
   -d '{"name":"Example","url":"https://example.com/news","jurisdiction":"EX","type":"html","active":true}' | jq .
 ```
 
+---
+
 ### Documents API
 
 ```bash
@@ -324,3 +329,62 @@ curl -s "${BASE:-http://127.0.0.1:8000}/documents/export.csv?jurisdiction=TX&lim
 ### Dev UI
 
 * Swagger UI: `http://127.0.0.1:8000/docs`
+
+---
+
+## Scheduled runs (cron)
+
+You can keep the dataset fresh automatically with a tiny shell helper and two cron entries.
+
+### 1) Create the helper script
+
+```bash
+# tools/ingest_cron.sh
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Base URL of the API (override in cron with BASE=...)
+BASE="\${BASE:-http://127.0.0.1:8000}"
+
+echo "[\$(date -Is)] ingest start"
+# Run cached ingest (fast re-runs)
+curl -fsS -X POST "\$BASE/admin/ingest" | jq -r . || echo "ingest failed"
+
+# Optional light cleanup passes (best-effort)
+curl -fsS -X POST "\$BASE/admin/cleanup/fragment-only"    >/dev/null || true
+curl -fsS -X POST "\$BASE/admin/cleanup/trailing-hash"    >/dev/null || true
+curl -fsS -X POST "\$BASE/admin/cleanup/non-http"         >/dev/null || true
+
+echo "[\$(date -Is)] ingest done"
+````
+
+Make it executable and create a logs folder:
+
+```bash
+chmod +x tools/ingest_cron.sh
+mkdir -p logs
+```
+
+### 2) Add cron entries
+
+Open your crontab:
+
+```bash
+crontab -e
+```
+
+Paste these lines (adjust absolute paths as needed):
+
+```cron
+# Daily cached ingest at 02:15
+15 2 * * * /bin/bash -lc '/full/path/tools/ingest_cron.sh >> /full/path/logs/ingest.log 2>&1'
+
+# Weekly forced refresh Sunday at 03:05 (bypasses cache)
+5 3 * * 0  /bin/bash -lc 'BASE=http://127.0.0.1:8000 curl -fsS -X POST "$BASE/admin/ingest?force=true" >> /full/path/logs/ingest.log 2>&1 || true'
+```
+
+> **Notes**
+>
+> * Ensure the API is running (e.g., `uvicorn app.main:app --reload --port 8000`) when cron fires.
+> * You can tail logs with: `tail -f logs/ingest.log`.
+> * For production, consider Postgres and a process manager (systemd, Docker, Kubernetes) and a system scheduler (systemd timers).
