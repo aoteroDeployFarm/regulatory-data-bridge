@@ -50,6 +50,7 @@ pip-wheel-metadata/
 .coverage.*
 htmlcov/
 .tox/
+.nox/
 .mypy_cache/
 .ruff_cache/
 .cache/
@@ -93,7 +94,7 @@ build/
 *.secrets
 secrets/
 **/.env
-# keep an example in version control if you have one:
+# keep a sample env in git if present
 !.env.example
 
 # --------------------
@@ -119,8 +120,7 @@ files/
 __workdir__/
 artifacts/
 
-# ---- Scraped/exported docs (SCOPED) ----
-# (Safer than ignoring *.pdf/*.csv globally.)
+# ---- Scraped/exported docs (SCOPED only; do not ignore globally) ----
 downloads/**/*.pdf
 downloads/**/*.docx
 downloads/**/*.xlsx
@@ -133,11 +133,9 @@ artifacts/**/*.pdf
 artifacts/**/*.docx
 artifacts/**/*.xlsx
 artifacts/**/*.csv
-# allow docs kept under docs/ or examples/:
-!docs/**/*.pdf
-!docs/**/*.csv
-!examples/**/*.pdf
-!examples/**/*.csv
+# but keep documentation/examples checked in
+!docs/**
+!examples/**
 
 # --------------------
 # SQLite / lightweight DBs
@@ -153,3 +151,8 @@ artifacts/**/*.csv
 # --------------------
 openapi/generated/
 redoc-static/
+
+# --------------------
+# Safety: always track Python package markers
+# --------------------
+!**/__init__.py
