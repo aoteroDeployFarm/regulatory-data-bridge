@@ -3,14 +3,18 @@
 """
 Send a digest email with:
   1) CSV attachment of recent regulatory changes
-  2) Markdown preview in the email body (from /changes?format=md)
+  2) Optional Markdown preview in the email body (/changes?format=md)
 
+Features
 - Works for ANY state via --jur (e.g., CO, CA, TX)
-- Prefers /changes/export.csv; falls back to /documents/export.csv
-- --since or --since-file (updates since-file to today on success)
-- SMTP with TLS/SSL using certifi CA bundle
-- Optional X-API-Key via --api-key or env API_KEY
-- JSON status printed to stdout (safe for tee/cron)
+- Prefer /changes/export.csv; fall back to /documents/export.csv if needed
+- Date controls:
+    * --since YYYY-MM-DD
+    * --since-file <path>  (persists last-sent date and updates to today on success)
+    * --days N             (shorthand: today - N days; ignored if --since or --since-file resolves)
+- SMTP with TLS/SSL using certifi CA bundle (Brevo/SendGrid/Gmail/SES)
+- Optional X-API-Key via --api-key (or env API_KEY)
+- Prints JSON status to stdout (cron/tee friendly)
 """
 
 import argparse
@@ -120,16 +124,13 @@ def get_changes_markdown(
     if group_by in ("source",):
         params["group_by"] = group_by
     if include_diff:
-        # repeated Query param style: include=diff
         params["include"] = "diff"
 
     r = requests.get(f"{base}/changes", headers=headers, params=params, timeout=(10, 60))
     r.raise_for_status()
     data = r.json()
-    # Our endpoint returns {"markdown": "..."} for md format
     if isinstance(data, dict) and "markdown" in data:
         return data["markdown"]
-    # If server returned plain string somehow
     if isinstance(data, str):
         return data
     return None
@@ -151,8 +152,12 @@ def build_html_body(plain_intro: str, md: Optional[str]) -> str:
     intro_html = "<p>" + "<br/>".join(html.escape(line) for line in plain_intro.splitlines()) + "</p>"
     if not md:
         return f"<html><body>{intro_html}</body></html>"
-    # Show markdown in a pre block to preserve formatting (including ```diff blocks)
-    md_html = f"<h3>Markdown preview</h3><pre style='white-space:pre-wrap;font-family:ui-monospace,Menlo,Consolas,monospace'>{html.escape(md)}</pre>"
+    md_html = (
+        "<h3>Markdown preview</h3>"
+        "<pre style='white-space:pre-wrap;font-family:ui-monospace,Menlo,Consolas,monospace'>"
+        f"{html.escape(md)}"
+        "</pre>"
+    )
     return f"<html><body>{intro_html}{md_html}</body></html>"
 
 def send_email_with_attachment(
@@ -174,20 +179,20 @@ def send_email_with_attachment(
     msg["To"] = ", ".join(to_addrs)
     msg["Subject"] = subject
 
-    # Plain text: intro + (optional) Markdown appended
+    # Plain text + optional Markdown
     if body_md:
         msg.set_content(body_text_intro + "\n\n---\nMarkdown preview\n\n" + body_md)
     else:
         msg.set_content(body_text_intro)
 
-    # HTML alternative (to keep formatting nice in clients that support HTML)
+    # HTML alternative
     html_part = build_html_body(body_text_intro, body_md)
     msg.add_alternative(html_part, subtype="html")
 
     # CSV attachment
     msg.add_attachment(attach_bytes, maintype="text", subtype="csv", filename=attach_name)
 
-    # Send with TLS/SSL using certifi bundle
+    # TLS/SSL with certifi
     if smtp_port == 465:
         ctx = make_tls_context()
         with smtplib.SMTP_SSL(smtp_host, smtp_port, context=ctx) as s:
@@ -207,12 +212,17 @@ def send_email_with_attachment(
 
 # ---------- CLI ----------
 def main():
-    ap = argparse.ArgumentParser(description="Send digest email with CSV attachment + Markdown preview.")
+    ap = argparse.ArgumentParser(description="Send digest email with CSV attachment + optional Markdown preview.")
     ap.add_argument("--jur", required=True, help="Jurisdiction/state code (e.g., CO, CA, TX)")
     ap.add_argument("--to", required=True, nargs="+", help="Recipient email(s)")
     ap.add_argument("--base", default=DEFAULT_BASE, help="API base URL (default: %(default)s)")
+
+    # Date controls
     ap.add_argument("--since", default=None, help="YYYY-MM-DD explicit since date")
     ap.add_argument("--since-file", default=None, help="Path to persist last-sent date; updated to today on success")
+    ap.add_argument("--days", type=int, default=None,
+                    help="Shorthand: use today - N days as --since (ignored if --since/--since-file resolves)")
+
     ap.add_argument("--subject", default=None, help="Email subject override")
     ap.add_argument("--limit", type=int, default=25000, help="Max CSV rows to request (default: %(default)s)")
     ap.add_argument("--api-key", default=DEF_API_KEY, help="Optional X-API-Key header (or set env API_KEY)")
@@ -235,8 +245,10 @@ def main():
 
     jur = args.jur.upper()
 
-    # Resolve since → CLI > since-file
+    # Resolve since → CLI > since-file > --days
     since = args.since or read_since_from_file(args.since_file)
+    if args.days and not since:
+        since = (datetime.date.today() - datetime.timedelta(days=args.days)).isoformat()
 
     # Fetch CSV
     try:
@@ -263,7 +275,6 @@ def main():
             )
             md_included = bool(md_text)
         except Exception as e:
-            # Non-fatal: keep going with CSV-only
             md_text = None
             md_included = False
             print(json.dumps({"ok": True, "warning": f"failed to fetch markdown preview: {e}"}))
