@@ -90,7 +90,7 @@ app.add_middleware(
 
 # ------------------------------------------------------------
 # Include routers (auto-detect; ignore if a module is missing)
-# We try: app.routers.sources, documents, alerts, admin
+# We try: app.routers.sources, documents, alerts, admin, changes
 # Each should expose a FastAPI APIRouter named `router`
 # ------------------------------------------------------------
 def _try_include(router_mod_name: str):
@@ -104,7 +104,14 @@ def _try_include(router_mod_name: str):
         pass
     return False
 
-for name in ("app.routers.sources", "app.routers.documents", "app.routers.alerts", "app.routers.admin"):
+for name in (
+    "app.routers.sources",
+    "app.routers.documents",
+    "app.routers.alerts",
+    "app.routers.admin",
+    # NEW: mount the changes router if present
+    "app.routers.changes",
+):
     _try_include(name)
 
 # ------------------------------------------------------------
@@ -126,6 +133,8 @@ def ready():
 # ============================================================
 #  Custom Swagger UI with "Download CSV" button
 #  Configure default via env CSV_DEFAULT_URL or edit below.
+#  Tip: when /changes/export.csv is available, set:
+#  CSV_DEFAULT_URL="/changes/export.csv?jurisdiction=CO&since=2025-09-01"
 # ============================================================
 CSV_DEFAULT_URL = os.getenv("CSV_DEFAULT_URL", "/documents/export.csv?jurisdiction=CO&limit=200")
 
@@ -139,7 +148,7 @@ def custom_swagger_ui_html():
     <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist/swagger-ui.css">
     <style>
       body {{ margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Helvetica, Arial; }}
-      #topbar {{ padding: 10px 14px; border-bottom: 1px solid #eee; display:flex; gap:10px; align-items:center; }}
+      #topbar {{ padding: 10px 14px; border-bottom: 1px solid #eee; display:flex; gap:10px; align-items:center; flex-wrap: wrap; }}
       .btn {{ cursor:pointer; padding:6px 12px; border-radius:6px; border:1px solid #dcdcdc; background:#f7f7f7; }}
       .btn:hover {{ background:#efefef; }}
       #swagger-ui {{ margin: 0 0 20px 0; }}
