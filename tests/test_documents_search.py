@@ -14,10 +14,10 @@ Prereqs:
 
 Common examples:
   # Run just this test with minimal output
-  pytest -q tests/test_document_search.py
+  pytest -q tests/test_documents_search.py
 
   # Run by keyword across the suite
-  pytest -k test_document_search -q
+  pytest -k test_documents_search -q
 """
 
 def test_search_documents(client):
