@@ -1,22 +1,50 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-import sys, json, argparse, urllib.parse, requests
+"""
+admin_client.py — Command-line client to trigger local ingest/scrape endpoints.
+
+Place at: tools/admin_client.py
+Run from the repo root (folder that contains app/).
+
+Description:
+  This script is a convenience wrapper for hitting the /admin/ingest
+  or /admin/scrape-all endpoints of your running FastAPI service.
+  It auto-detects which method (GET/POST) and endpoint is available
+  via the OpenAPI spec, then performs the ingest with your given options.
+
+Examples:
+  python tools/admin_client.py --state CO
+  python tools/admin_client.py --state tx --limit 50 --force
+  python tools/admin_client.py --state ca --timeout 600
+  python tools/admin_client.py --state ny --api-key "my-secret-key"
+  python tools/admin_client.py --base http://localhost:9000 --state az
+"""
+
+import sys
+import json
+import argparse
+import urllib.parse
+import requests
 
 DEFAULT_BASE = "http://127.0.0.1:8000"
+
 
 def get_openapi(base_url: str) -> dict:
     r = requests.get(f"{base_url}/openapi.json", timeout=(10, 30))
     r.raise_for_status()
     return r.json()
 
+
 def allowed_methods(openapi: dict, path: str) -> set[str]:
     paths = openapi.get("paths", {})
     entry = paths.get(path, {})
     return {m.upper() for m in entry.keys()}
 
+
 def call_json(method: str, url: str, headers: dict, json_body: dict | None, timeout_read: int):
     # connection timeout 10s, read timeout configurable
     return requests.request(method, url, headers=headers, json=json_body, timeout=(10, timeout_read))
+
 
 def call_ingest(base_url: str, state: str, limit: int, force: bool, api_key: str | None, timeout_read: int):
     spec = get_openapi(base_url)
@@ -53,6 +81,7 @@ def call_ingest(base_url: str, state: str, limit: int, force: bool, api_key: str
 
     raise RuntimeError("Neither /admin/ingest nor /admin/scrape-all are available")
 
+
 def main():
     ap = argparse.ArgumentParser(description="Admin client for local ingest (auto-detects method).")
     ap.add_argument("ingest", nargs="?", help="(fixed) use as: admin_client.py ingest", default="ingest")
@@ -77,6 +106,7 @@ def main():
     except Exception as e:
         print(json.dumps({"ok": False, "error": str(e)}), file=sys.stderr)
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

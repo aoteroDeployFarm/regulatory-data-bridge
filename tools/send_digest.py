@@ -1,20 +1,69 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Send a digest email with:
-  1) CSV attachment of recent regulatory changes
-  2) Optional Markdown preview in the email body (/changes?format=md)
+send_digest.py — Email a CSV digest of recent regulatory changes (+ optional Markdown preview).
 
-Features
-- Works for ANY state via --jur (e.g., CO, CA, TX)
-- Prefer /changes/export.csv; fall back to /documents/export.csv if needed
-- Date controls:
-    * --since YYYY-MM-DD
-    * --since-file <path>  (persists last-sent date and updates to today on success)
-    * --days N             (shorthand: today - N days; ignored if --since or --since-file resolves)
-- SMTP with TLS/SSL using certifi CA bundle (Brevo/SendGrid/Gmail/SES)
-- Optional X-API-Key via --api-key (or env API_KEY)
-- Prints JSON status to stdout (cron/tee friendly)
+Place at: tools/send_digest.py
+Run from the repo root (folder that contains app/).
+
+What this does:
+  1) Pulls a CSV export of recent changes from your running API:
+       - Prefers /changes/export.csv
+       - Falls back to /documents/export.csv if /changes/export.csv is unavailable
+  2) (Optional) Fetches a Markdown preview from /changes?format=md for embedding in the email body
+  3) Sends an email with the CSV attached (and HTML + plaintext body), using STARTTLS or SSL
+
+Date controls (pick ONE; priority is shown):
+  - --since YYYY-MM-DD           (highest priority)
+  - --since-file <path>          (reads previous date; on success, updates to today)
+  - --days N                     (uses today - N days if neither of the above resolves)
+
+Prereqs:
+  - Your API must expose at least one of:
+      /changes/export.csv  (preferred, supports ?since=)
+      /documents/export.csv
+    Optionally for preview:
+      /changes?format=md   (returns {"markdown": "..."} or raw string)
+  - SMTP credentials (Gmail/SendGrid/Brevo/SES/etc.). TLS is supported via certifi.
+  - Optional API key header via --api-key or env API_KEY.
+
+Environment defaults (can be overridden by CLI):
+  API_BASE     → --base (default: http://127.0.0.1:8000)
+  SMTP_HOST    → --smtp-host (default: smtp.gmail.com)
+  SMTP_PORT    → --smtp-port (default: 587)
+  SMTP_USER    → --smtp-user
+  SMTP_PASS    → --smtp-pass
+  SMTP_TLS     → --smtp-tls (true/false; default: true)
+  FROM_ADDR    → --from-addr (default: no-reply@localhost)
+  API_KEY      → --api-key (optional X-API-Key header)
+
+Common examples:
+  # Minimal: send CO changes to one recipient, last 7 days
+  python tools/send_digest.py --jur CO --to you@example.com --days 7
+
+  # Use since-file tracker (creates/updates on success)
+  python tools/send_digest.py --jur CO --to ops@example.com --since-file .cache/last_CO.txt
+
+  # Explicit since date, group MD preview by source, include diffs
+  python tools/send_digest.py --jur CA --to a@b.com --since 2025-09-01 --md-group-by source --md-include-diff
+
+  # Custom API base, API key, and subject
+  python tools/send_digest.py --jur TX --to team@company.com \
+    --base http://localhost:9000 --api-key "$API_KEY" \
+    --subject "TX Changes Digest"
+
+  # SMTP over SSL (port 465) — STARTTLS disabled automatically on 465
+  python tools/send_digest.py --jur CO --to you@example.com \
+    --smtp-host smtp.example.com --smtp-port 465 --smtp-user user --smtp-pass pass
+
+Exit codes:
+  - 0 => Email sent successfully (JSON summary printed to stdout)
+  - 1 => Failure (JSON error printed to stderr), e.g. fetch_csv/send_email errors
+
+Notes:
+  - CSV row count is estimated by parsing the attachment (header excluded).
+  - Markdown preview is optional; if unavailable, sending proceeds with CSV only.
+  - On success, --since-file (if provided) is updated to today (YYYY-MM-DD).
 """
 
 import argparse
@@ -310,28 +359,4 @@ def main():
         print(json.dumps({"ok": False, "step": "send_email", "error": str(e)}), file=sys.stderr)
         sys.exit(1)
 
-    # Update since-file to today on success
-    since_file_updated = False
-    if args.since_file:
-        try:
-            write_since_file(args.since_file, today_iso())
-            since_file_updated = True
-        except Exception as e:
-            print(json.dumps({"ok": True, "warning": f"failed to update since-file: {e}"}))
-
-    print(json.dumps({
-        "ok": True,
-        "jur": jur,
-        "to": args.to,
-        "rows": rows,
-        "endpoint": ep,
-        "url": url_used,
-        "since": since,
-        "since_file": args.since_file,
-        "since_file_updated": since_file_updated,
-        "markdown_included": md_included
-    }, indent=2))
-
-
-if __name__ == "__main__":
-    main()
+    # Update since-file to today on s

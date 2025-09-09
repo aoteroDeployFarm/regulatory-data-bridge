@@ -1,21 +1,57 @@
 #!/usr/bin/env python3
 """
-tools/upsert_state_sites.py — bulk upsert & activate state regulatory sources.
+upsert_state_sites.py — Bulk upsert & activate state regulatory source URLs.
 
-- Reads sites from ./state-website-data/state-website-data.json (override with --file)
-- Upserts by URL (idempotent). Existing rows are NOT renamed (prevents churn).
-- Guarantees UNIQUE(name): tracks names used (DB + current run) and appends a short hash only if needed.
-- De-dupes URLs within each state (stable order).
-- Optional: --commit-per-state commits after each state for resilience.
+Place at: tools/upsert_state_sites.py
+Run from the repo root (folder that contains app/).
 
-Usage:
-  python3 tools/upsert_state_sites.py
-  python3 tools/upsert_state_sites.py --dry-run
-  python3 tools/upsert_state_sites.py --states CA,TX,CO
-  python3 tools/upsert_state_sites.py --file ./state-website-data/state-website-data.json --commit-per-state
+What this does:
+  - Reads a JSON file of state → [URLs] (default: ./state-website-data/state-website-data.json).
+  - Upserts by URL (idempotent). Existing rows keep their current name to avoid churn.
+  - Ensures UNIQUE(name): tracks names in DB + this run; only appends a short hash if needed.
+  - De-dupes URLs within each state while preserving their order.
+  - Sets jurisdiction/state, type = ("pdf" if URL ends in .pdf else "html"), and active=True.
+  - Optional: commit after each state (for resilience) or run in dry-run mode (no writes).
+
+Input JSON format:
+  {
+    "Alabama": ["https://example.gov/a", "https://example.gov/b"],
+    "AK":       ["https://alaska.gov/x"],
+    ...
+  }
+  Keys may be full state names or USPS codes; values are lists of URL strings.
+
+Prereqs:
+  - Source model available in:
+      app.db.models.Source  or  app.db.models.source.Source (or SourceModel)
+  - A DB session exposed via one of:
+      app.db.session.get_session(...), app.db.session.SessionLocal, or app.db.session.get_db()
+
+Common examples:
+  python tools/upsert_state_sites.py
+      # Upsert all states from default JSON; commit once at the end
+
+  python tools/upsert_state_sites.py --dry-run
+      # Show inserts/updates per state; do not write/commit
+
+  python tools/upsert_state_sites.py --states CA,TX,CO
+      # Limit operation to the listed states (names or USPS codes)
+
+  python tools/upsert_state_sites.py --file ./state-website-data/state-website-data.json --commit-per-state
+      # Use a custom file and commit after each state for incremental safety
+
+Notes:
+  - Name generation uses "JUR – host/path" and appends a short hash iff duplicate.
+  - The script accepts full names or USPS codes in both the JSON and --states filter.
+  - Exit code 0 on success; non-zero on fatal error (e.g., session/model resolution).
 """
 from __future__ import annotations
-import sys, json, argparse, importlib, hashlib
+
+import sys
+import json
+import argparse
+import importlib
+import hashlib
 from contextlib import contextmanager
 from pathlib import Path
 from urllib.parse import urlparse
@@ -28,15 +64,57 @@ if str(REPO_ROOT) not in sys.path:
 
 # --- State name -> USPS code ---
 USPS = {
-    "Alabama":"AL","Alaska":"AK","Arizona":"AZ","Arkansas":"AR","California":"CA","Colorado":"CO",
-    "Connecticut":"CT","Delaware":"DE","Florida":"FL","Georgia":"GA","Hawaii":"HI","Idaho":"ID",
-    "Illinois":"IL","Indiana":"IN","Iowa":"IA","Kansas":"KS","Kentucky":"KY","Louisiana":"LA",
-    "Maine":"ME","Maryland":"MD","Massachusetts":"MA","Michigan":"MI","Minnesota":"MN","Mississippi":"MS",
-    "Missouri":"MO","Montana":"MT","Nebraska":"NE","Nevada":"NV","New Hampshire":"NH","New Jersey":"NJ",
-    "New Mexico":"NM","New York":"NY","North Carolina":"NC","North Dakota":"ND","Ohio":"OH","Oklahoma":"OK",
-    "Oregon":"OR","Pennsylvania":"PA","Rhode Island":"RI","South Carolina":"SC","South Dakota":"SD",
-    "Tennessee":"TN","Texas":"TX","Utah":"UT","Vermont":"VT","Virginia":"VA","Washington":"WA",
-    "West Virginia":"WV","Wisconsin":"WI","Wyoming":"WY","District of Columbia":"DC",
+    "Alabama": "AL",
+    "Alaska": "AK",
+    "Arizona": "AZ",
+    "Arkansas": "AR",
+    "California": "CA",
+    "Colorado": "CO",
+    "Connecticut": "CT",
+    "Delaware": "DE",
+    "Florida": "FL",
+    "Georgia": "GA",
+    "Hawaii": "HI",
+    "Idaho": "ID",
+    "Illinois": "IL",
+    "Indiana": "IN",
+    "Iowa": "IA",
+    "Kansas": "KS",
+    "Kentucky": "KY",
+    "Louisiana": "LA",
+    "Maine": "ME",
+    "Maryland": "MD",
+    "Massachusetts": "MA",
+    "Michigan": "MI",
+    "Minnesota": "MN",
+    "Mississippi": "MS",
+    "Missouri": "MO",
+    "Montana": "MT",
+    "Nebraska": "NE",
+    "Nevada": "NV",
+    "New Hampshire": "NH",
+    "New Jersey": "NJ",
+    "New Mexico": "NM",
+    "New York": "NY",
+    "North Carolina": "NC",
+    "North Dakota": "ND",
+    "Ohio": "OH",
+    "Oklahoma": "OK",
+    "Oregon": "OR",
+    "Pennsylvania": "PA",
+    "Rhode Island": "RI",
+    "South Carolina": "SC",
+    "South Dakota": "SD",
+    "Tennessee": "TN",
+    "Texas": "TX",
+    "Utah": "UT",
+    "Vermont": "VT",
+    "Virginia": "VA",
+    "Washington": "WA",
+    "West Virginia": "WV",
+    "Wisconsin": "WI",
+    "Wyoming": "WY",
+    "District of Columbia": "DC",
 }
 
 # ---------- JSON loader ----------
@@ -99,20 +177,25 @@ def _ctx_from_sessionlocal(sess_mod, engine):
     try:
         yield db
     finally:
-        try: db.close()
-        except Exception: pass
+        try:
+            db.close()
+        except Exception:
+            pass
 
 @contextmanager
 def _ctx_from_get_db(sess_mod):
     get_db = getattr(sess_mod, "get_db", None)
     if not callable(get_db):
         raise RuntimeError("get_db not callable")
-    gen = get_db(); db = next(gen)
+    gen = get_db()
+    db = next(gen)
     try:
         yield db
     finally:
-        try: next(gen)
-        except StopIteration: pass
+        try:
+            next(gen)
+        except StopIteration:
+            pass
 
 def get_session_ctx():
     try:
@@ -143,13 +226,15 @@ def get_source_model():
 def set_str(obj, candidates, value):
     for name in candidates:
         if hasattr(obj, name):
-            setattr(obj, name, value); return True
+            setattr(obj, name, value)
+            return True
     return False
 
 def set_bool(obj, candidates, value: bool):
     for name in candidates:
         if hasattr(obj, name):
-            setattr(obj, name, bool(value)); return True
+            setattr(obj, name, bool(value))
+            return True
     return False
 
 def infer_type(url: str) -> str:
@@ -201,16 +286,27 @@ def upsert(db, Source, state_key: str, url: str, used_names: set[str], *, dry_ru
 
 # ---------- CLI ----------
 def parse_args():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--file",
-                    default=str(REPO_ROOT / "state-website-data" / "state-website-data.json"),
-                    help="Path to JSON file (default: ./state-website-data/state-website-data.json)")
-    ap.add_argument("--states", default="",
-                    help="Comma-separated states to limit (accepts names or USPS codes, e.g., CA,Texas,CO)")
-    ap.add_argument("--dry-run", action="store_true",
-                    help="Show what would change; no commit")
-    ap.add_argument("--commit-per-state", action="store_true",
-                    help="Commit after each state (more resilient to single-state errors)")
+    ap = argparse.ArgumentParser(description="Bulk upsert & activate state regulatory sources from JSON.")
+    ap.add_argument(
+        "--file",
+        default=str(REPO_ROOT / "state-website-data" / "state-website-data.json"),
+        help="Path to JSON file (default: ./state-website-data/state-website-data.json)",
+    )
+    ap.add_argument(
+        "--states",
+        default="",
+        help="Comma-separated states to limit (accepts names or USPS codes, e.g., CA,Texas,CO)",
+    )
+    ap.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show what would change; no commit",
+    )
+    ap.add_argument(
+        "--commit-per-state",
+        action="store_true",
+        help="Commit after each state (more resilient to single-state errors)",
+    )
     return ap.parse_args()
 
 def main():
@@ -243,8 +339,10 @@ def main():
             ins = upd = 0
             for u in urls:
                 result = upsert(db, Source, state_key, u, used_names, dry_run=args.dry_run)
-                if result == "insert": ins += 1
-                elif result == "update": upd += 1
+                if result == "insert":
+                    ins += 1
+                elif result == "update":
+                    upd += 1
 
             jur = USPS.get(state_key, state_key)
             if args.dry_run:

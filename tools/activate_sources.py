@@ -5,13 +5,45 @@ activate_sources.py — Bulk-activate (or deactivate) sources in your DB.
 Place at: tools/activate_sources.py
 Run from the repo root (folder that contains app/).
 
-Examples:
-  python tools/activate_sources.py                    # activate ALL sources
-  python tools/activate_sources.py --seed             # seed first, then activate
-  python tools/activate_sources.py --only-inactive    # only flip currently inactive
-  python tools/activate_sources.py --deactivate       # set active=False for all
-  python tools/activate_sources.py --states CO,TX,CA  # scope by jurisdictions
-  python tools/activate_sources.py --dry-run          # show counts, no commit
+What this does:
+  - Connects to your app's database using whichever session construct is available
+    (get_session, SessionLocal, or get_db), with a last-resort engine from settings.
+  - Toggles Source.active for rows you specify (all, by state filter, and/or only
+    those already inactive/active).
+  - Optional seeding step (runs app/seeds/seed_sources.py) before toggling.
+  - Supports a dry-run mode that reports counts without committing.
+
+Prereqs:
+  - A Source ORM model at app.db.models.Source or app.db.models.source.Source
+  - A DB session exposed at app.db.session (get_session | SessionLocal | get_db)
+  - SQLAlchemy installed and configured via settings (DATABASE_URL or SQLALCHEMY_DATABASE_URI)
+
+Common examples:
+  python tools/activate_sources.py
+      # Activate ALL sources
+
+  python tools/activate_sources.py --seed
+      # Seed first (idempotent), then activate all
+
+  python tools/activate_sources.py --only-inactive
+      # Activate only those currently inactive
+
+  python tools/activate_sources.py --deactivate
+      # Deactivate ALL sources
+
+  python tools/activate_sources.py --deactivate --only-inactive
+      # Deactivate only those currently active
+
+  python tools/activate_sources.py --states CO,TX,CA
+      # Scope by jurisdictions (case-insensitive)
+
+  python tools/activate_sources.py --dry-run
+      # Show how many rows would change, but do not commit
+
+Notes:
+  - --states accepts a comma-separated list (e.g., "co, tx ,CA"); whitespace is fine.
+  - --only-inactive pairs with either activate (default) or --deactivate to limit flips.
+  - Exit code 0 on success; non-zero on error.
 """
 from __future__ import annotations
 
@@ -27,6 +59,7 @@ HERE = Path(__file__).resolve()
 REPO_ROOT = HERE.parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
+
 
 # --- Resolve DB session context in a backward-compatible way ---
 @contextmanager
@@ -46,6 +79,7 @@ def _ctx_from_get_session(mod, engine):
     except Exception:
         raise
 
+
 @contextmanager
 def _ctx_from_sessionlocal(mod, engine):
     """Wrap a SessionLocal factory if available."""
@@ -60,6 +94,7 @@ def _ctx_from_sessionlocal(mod, engine):
             db.close()
         except Exception:
             pass
+
 
 @contextmanager
 def _ctx_from_get_db(mod):
@@ -77,6 +112,7 @@ def _ctx_from_get_db(mod):
             next(gen)
         except StopIteration:
             pass
+
 
 def _resolve_engine_and_ctx():
     """
@@ -142,6 +178,7 @@ def _resolve_engine_and_ctx():
             raise RuntimeError("No DATABASE_URL found in settings or env.")
         from sqlalchemy import create_engine
         from sqlalchemy.orm import sessionmaker
+
         engine = create_engine(db_url, future=True)
         SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
 
@@ -161,10 +198,13 @@ def _resolve_engine_and_ctx():
             f"Details: {e}"
         )
 
+
 def _wrap_name(name):
     # Decorator no-op used only for labeling; keeps code tidy
-    def deco(fn): return fn
+    def deco(fn):  # noqa: D401
+        return fn
     return deco
+
 
 def _import_source_model():
     """Try the common locations for the Source model."""
@@ -185,6 +225,7 @@ def _import_source_model():
             f"Details: {e}"
         )
 
+
 def maybe_seed(verbose: bool = True) -> None:
     """Run app/seeds/seed_sources.py if present (idempotent)."""
     seed_path = REPO_ROOT / "app" / "seeds" / "seed_sources.py"
@@ -197,21 +238,43 @@ def maybe_seed(verbose: bool = True) -> None:
     import runpy
     runpy.run_path(str(seed_path), run_name="__main__")
 
+
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Bulk activate/deactivate sources.")
-    p.add_argument("--deactivate", action="store_true",
-                   help="Set active=False for matched sources (default: activate=True).")
-    p.add_argument("--only-inactive", action="store_true",
-                   help="Only flip rows currently inactive (or active if --deactivate).")
-    p.add_argument("--states", type=str, default="",
-                   help="Comma-separated jurisdiction codes (e.g., CO,TX,CA).")
-    p.add_argument("--seed", action="store_true",
-                   help="Run seeding before toggling.")
-    p.add_argument("--dry-run", action="store_true",
-                   help="Show counts; do not commit.")
-    p.add_argument("-v", "--verbose", action="store_true",
-                   help="Verbose output.")
+    p.add_argument(
+        "--deactivate",
+        action="store_true",
+        help="Set active=False for matched sources (default: activate=True).",
+    )
+    p.add_argument(
+        "--only-inactive",
+        action="store_true",
+        help="Only flip rows currently inactive (or active if --deactivate).",
+    )
+    p.add_argument(
+        "--states",
+        type=str,
+        default="",
+        help="Comma-separated jurisdiction codes (e.g., CO,TX,CA).",
+    )
+    p.add_argument(
+        "--seed",
+        action="store_true",
+        help="Run seeding before toggling.",
+    )
+    p.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show counts; do not commit.",
+    )
+    p.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="Verbose output.",
+    )
     return p.parse_args()
+
 
 def main() -> int:
     args = parse_args()
@@ -240,7 +303,7 @@ def main() -> int:
         if args.only_inactive and target_value is True:
             q = q.filter(Source.active == False)  # noqa: E712
         elif args.only_inactive and target_value is False:
-            q = q.filter(Source.active == True)   # noqa: E712
+            q = q.filter(Source.active == True)  # noqa: E712
 
         if args.dry_run:
             to_change = q.count()
@@ -256,6 +319,7 @@ def main() -> int:
     scope = f" in [{args.states}]" if args.states else ""
     print(f"{action} {changed} / {total} sources{scope}.")
     return 0
+
 
 if __name__ == "__main__":
     raise SystemExit(main())
