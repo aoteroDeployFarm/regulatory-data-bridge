@@ -1,4 +1,45 @@
 #!/usr/bin/env python3
+"""
+change_tracker.py — Compute hashes, track versions, and record diffs for documents.
+
+Place at: app/services/change_tracker.py  (or keep current location and imports)
+Run from: your app context (called from scrapers/ingesters with a DB session).
+
+What this does:
+  - Normalizes extracted text and computes a stable SHA-1 content hash.
+  - Seeds initial version rows for legacy documents missing current_hash.
+  - Appends new DocumentVersion rows when content changes (ADDED/UPDATED/REMOVED).
+  - Maintains document tracking fields:
+      current_hash, first_seen_at, last_seen_at, last_changed_at.
+  - Provides optional unified diff summary helper (not persisted by default).
+
+Key functions:
+  - record_version(db, doc, extracted_text, title) -> "ADDED" | "UPDATED" | "NOCHANGE"
+  - record_removed(db, doc, reason="removed") -> "REMOVED"
+  - seed_if_missing(db, doc, text=None, title=None) -> "ADDED" | "SEEDED-DOC" | "SKIP"
+
+Why it matters:
+  - Enables robust change tracking across re-ingests and edits.
+  - Keeps a historical timeline in document_versions for audit and diffing.
+  - Safely seeds legacy rows so downstream tools (exports/alerts) have hashes.
+
+Examples (pseudo-usage):
+  from app.services.change_tracker import record_version
+  # after fetching and extracting text:
+  status = record_version(db, doc, extracted_text=page_text, title=page_title)
+  if status in ("ADDED", "UPDATED"):
+      db.commit()
+
+  # seeding legacy rows missing current_hash:
+  for doc in db.query(Document).filter(Document.current_hash.is_(None)):
+      seed_if_missing(db, doc, text=doc.text, title=doc.title)
+  db.commit()
+
+Notes:
+  - Hash basis prefers extracted_text; if absent, uses "title\\nurl" for stability.
+  - SNAPSHOT_MAX_CHARS limits stored snapshot size (default 20k chars).
+"""
+
 from __future__ import annotations
 import hashlib
 from datetime import datetime
@@ -29,8 +70,10 @@ def normalize_text(s: Optional[str]) -> str:
     s = s.replace("\r\n", "\n").replace("\r", "\n")
     return s.strip()
 
+
 def compute_hash(text: str) -> str:
     return hashlib.sha1(text.encode("utf-8")).hexdigest()
+
 
 def diff_summary(prev: Optional[str], curr: Optional[str], max_lines: int = 12) -> str:
     prev_s = normalize_text(prev).splitlines()
