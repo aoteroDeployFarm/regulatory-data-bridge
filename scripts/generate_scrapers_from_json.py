@@ -1,4 +1,60 @@
 #!/usr/bin/env python3
+"""
+generate_scrapers_from_json.py — Generate scraper modules from a simple JSON config.
+
+Place at: tools/generate_scrapers_from_json.py
+Run from the repo root (folder that contains app/).
+
+What this does:
+  - Reads a config file (JSON / NDJSON) describing target URLs (by state or arbitrary lists).
+  - Normalizes entries and creates Python scraper modules under <outdir>/state/<code>/.
+  - Emits either *_html_scraper.py or *_pdf_scraper.py based on the URL.
+  - Creates lightweight, self-caching scrapers that:
+      • For HTML: fetch page, extract text via BeautifulSoup (+ optional CSS selector)
+      • For PDF: fetch bytes and extract text via pypdf or pdfminer.six
+    Each scraper tracks a simple "signature" (ETag/Last-Modified/Content-Length or SHA) and a last content snapshot.
+
+Accepted input formats (auto-detected):
+  1) Dict of state → [urls]:         {"Colorado": ["https://...", ...], "AK": ["https://...", ...]}
+  2) List of URL strings:            ["https://...", "https://..."]
+  3) Nested dicts/lists with keys:   one of ["target_url","url","link","href","source_url","pdf_url","website"]
+     (The script walks nested structures to find URLs.)
+
+State detection:
+  - If the dict form is used (state → [urls]), the key is used to infer jurisdiction code (e.g., "Colorado" → "co").
+  - Otherwise, name/slug/id/title/state fields may influence the subdirectory, if recognizable.
+
+Where files go:
+  <outdir>/
+    __init__.py
+    state/
+      __init__.py
+      <code>/
+        __init__.py
+        <generated-name>_html_scraper.py
+        <generated-name>_pdf_scraper.py
+        .cache/ (created at runtime by each scraper)
+
+Common examples:
+  # 1) Dict of states → urls (default selector for HTML)
+  python tools/generate_scrapers_from_json.py \
+    --config state-website-data/state-website-data.json \
+    --outdir scrapers \
+    --default-selector "main, article, section, h1, h2, h3"
+
+  # 2) Overwrite existing generated files
+  python tools/generate_scrapers_from_json.py --config my.cfg.json --outdir scrapers --overwrite
+
+  # 3) NDJSON list of objects with various url fields
+  python tools/generate_scrapers_from_json.py --config sources.ndjson --outdir scrapers
+
+Notes:
+  - Filenames are derived from (name?, host, path) and uniqued within each state folder.
+  - HTML scrapers default to selector "main, article, section, h1, h2, h3" (override with --default-selector).
+  - PDF scrapers require either pypdf or pdfminer.six at runtime to extract text.
+  - Exit codes: 0 success; 2 config read error; 3 no valid entries found.
+"""
+
 from __future__ import annotations
 
 import argparse

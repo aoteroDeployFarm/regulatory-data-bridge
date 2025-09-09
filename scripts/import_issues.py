@@ -1,20 +1,44 @@
 #!/usr/bin/env python3
 """
-Bulk-create GitHub issues from JSON using the REST API.
+import_issues.py — Bulk-create GitHub issues from JSON via the REST API.
 
-Usage:
-  export GITHUB_TOKEN=ghp_xxx   # required
-  python scripts/import_issues.py --file data/issues.json --repo owner/name
-  # or rely on auto-detect from `git remote`:
-  python scripts/import_issues.py --file data/issues.json
+Place at: tools/import_issues.py
+Run from the repo root (folder that contains app/).
 
-JSON format (data/issues.json):
-{
-  "issues": [
-    { "title": "...", "body": "...", "labels": ["a","b"], "milestone": "Phase 1: Core Backend & AI" },
-    ...
-  ]
-}
+What this does:
+  - Reads a JSON file of issues (title, body, labels, milestone).
+  - Detects the target repo from the environment (GITHUB_REPOSITORY) or `git remote get-url origin`
+    unless you pass --repo owner/name explicitly.
+  - Ensures referenced milestones and labels exist (creates them if missing).
+  - Skips creating issues whose titles already exist (ignores PRs).
+  - Supports a dry-run mode to preview actions without changing GitHub.
+
+JSON format (example):
+  {
+    "issues": [
+      { "title": "Add ingest retries", "body": "Details...", "labels": ["ingest","enhancement"], "milestone": "Phase 1" },
+      { "title": "Fix PDF parser", "body": "Stacktrace...", "labels": ["bug"] }
+    ]
+  }
+
+Prereqs:
+  - Environment variable GITHUB_TOKEN (or GH_TOKEN) must be set with repo write permissions.
+  - requests library installed.
+
+Common examples:
+  # Explicit repo, default file path
+  export GITHUB_TOKEN=ghp_xxx
+  python tools/import_issues.py --repo owner/name
+
+  # Auto-detect repo from the current git checkout, custom file
+  python tools/import_issues.py --file data/issues.json
+
+  # Dry run: show what would be created (labels/milestones/issues) but do nothing
+  python tools/import_issues.py --file data/issues.json --repo owner/name --dry-run
+
+Exit codes:
+  - 0 => Completed successfully (created/skipped counts printed)
+  - 1 => Fatal error (e.g., missing token, read/HTTP failure)
 """
 from __future__ import annotations
 

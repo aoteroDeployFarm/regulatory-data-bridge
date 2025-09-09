@@ -1,4 +1,46 @@
 #!/usr/bin/env python3
+"""
+run_all_scrapers.py — Discover and run generated scrapers concurrently; write JSONL results.
+
+Place at: tools/run_all_scrapers.py
+Run from the repo root (folder that contains app/).
+
+What this does:
+  - Recursively finds scraper modules under scrapers/state/**/*_scraper.py.
+  - Imports each module and calls check_for_update().
+  - Runs scrapers in a thread pool and streams results to a timestamped JSONL file.
+  - Prints a concise console summary (ok/updated/failed) and per-scraper status.
+
+Output format (one JSON object per line):
+  {
+    "source_id": "<file_stem>",
+    "state": "<state_code or _unknown>",
+    "module": "scrapers.state.<code>.<name>_scraper",
+    "path": "scrapers/state/<code>/<name>_scraper.py",
+    "run_at": "YYYYMMDDTHHMMSSZ",
+    "ok": true|false,
+    "error": "<message if any>",
+    "result": { ... original dict returned by check_for_update() ... }
+  }
+
+Common examples:
+  # Run everything with 8 workers; show all results
+  python tools/run_all_scrapers.py
+
+  # Run only Texas and California scrapers, show only updated ones
+  python tools/run_all_scrapers.py --state tx --state ca --only_updated
+
+  # Limit to 20 scrapers matching 'health' in filename, increase workers
+  python tools/run_all_scrapers.py --pattern health --limit 20 --workers 16
+
+  # Use a different root folder and output directory
+  python tools/run_all_scrapers.py --root scrapers/state --out data/runs
+
+Notes:
+  - A scraper is expected to define a callable check_for_update() → dict.
+  - Failures are captured and recorded; the run continues.
+  - Output file path is printed at the end (default: data/runs/scrape_<timestamp>.jsonl).
+"""
 from __future__ import annotations
 
 import argparse
@@ -10,15 +52,17 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Iterable, List, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 SCRAPERS_ROOT = Path("scrapers/state")
+
 
 @dataclass(frozen=True)
 class ScraperRef:
     state: str            # e.g. "tx"
     path: Path            # full path to file
     module_path: str      # e.g. "scrapers.state.tx.some_scraper"
+
 
 def iter_scrapers(root: Path = SCRAPERS_ROOT) -> Iterable[ScraperRef]:
     for p in root.rglob("*_scraper.py"):
@@ -38,10 +82,10 @@ def iter_scrapers(root: Path = SCRAPERS_ROOT) -> Iterable[ScraperRef]:
             state = "_unknown"
         yield ScraperRef(state=state, path=p, module_path=module_path)
 
+
 def load_module(mp: str):
     return importlib.import_module(mp)
 
-from typing import Any, Dict, Tuple
 
 def run_one(ref: ScraperRef) -> Tuple[ScraperRef, Dict[str, Any] | None, str | None]:
     try:
@@ -130,6 +174,7 @@ def main():
 
     print(f"\nDone: ok={ok} updated={upd} failed={fail}")
     print(f"Output → {outfile}")
+
 
 if __name__ == "__main__":
     main()

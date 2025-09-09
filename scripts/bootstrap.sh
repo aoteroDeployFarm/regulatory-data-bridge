@@ -1,4 +1,29 @@
 #!/usr/bin/env bash
+# bootstrap.sh — Initialize dev environment, DB index, and start API server.
+#
+# Place at: tools/bootstrap.sh
+# Run from the repo root.
+#
+# What this does:
+#   - Ensures Python virtualenv `.venv` exists (creates if missing).
+#   - Activates the venv (supports bash, zsh, fish, fallback).
+#   - Installs pip, wheel, and project dependencies (requirements.txt or setup.cfg/pyproject.toml).
+#   - Ensures SQLite index for document_versions(change_type, fetched_at).
+#   - Launches uvicorn with hot reload on port 8000.
+#
+# Prereqs:
+#   - Python 3 installed
+#   - sqlite3 CLI installed
+#   - uvicorn available (via pip install uvicorn[standard])
+#
+# Common examples:
+#   ./tools/bootstrap.sh
+#       # Bootstrap environment and start dev server
+#
+# Notes:
+#   - Run once per fresh checkout to initialize environment and DB.
+#   - Safe to re-run; venv and DB index creation are idempotent.
+#
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 
