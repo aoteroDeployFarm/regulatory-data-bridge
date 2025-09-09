@@ -1,21 +1,75 @@
-# app/scrapers/html.py
+#!/usr/bin/env python3
+"""
+html_utils.py — HTML scraping helpers for ingesting documents from source sites.
+
+Place at: app/scrapers/html_utils.py
+Run from the repo root (folder that contains app/).
+
+What this does:
+  - Fetches a source URL and extracts article links + optional publish dates.
+  - Inserts or updates Document rows via app.db.crud.create_or_update_doc().
+  - Site-specific parser for Texas RRC (/news/…); generic parser for others:
+      • Prefer JSON-LD (NewsArticle/BlogPosting/Article) when present.
+      • Fallback to <a> anchors and nearby date text.
+
+Key pieces:
+  - run_html(db, src): entry point. Chooses site-specific vs generic parser.
+  - _parse_rrc_news(): robust URL filtering for rrc.texas.gov/news with date parsing
+    from URL patterns (/news/YYYYMMDD-… or /news/MMDDYY-…).
+  - _generic_html(): JSON-LD first, then anchor fallback with loose date parsing.
+
+Why it matters:
+  - Normalizes noisy HTML pages into consistent Document records.
+  - Avoids cross-site contamination by requiring same-host URLs.
+  - Prevents duplicate inserts with URL de-duping.
+
+Expectations:
+  - Source model has: id, url, jurisdiction, type (typically "html").
+  - SQLAlchemy Session provided by caller (e.g., FastAPI dependency).
+
+Common examples (pseudo-usage):
+  from sqlalchemy.orm import Session
+  from app.db.models import Source
+  from app.scrapers.html_utils import run_html
+
+  with get_session() as db:
+      src = db.query(Source).filter_by(name="TX RRC News").first()
+      run_html(db, src)
+
+Notes:
+  - DATE_PAT matches "Month DD, YYYY" anywhere in nearby text.
+  - Titles are cleaned to normalize curly quotes/dashes.
+  - If no publish date is found, the document is stored without published_at.
+"""
 from __future__ import annotations
+
 import re, json, html
 from datetime import datetime
 from urllib.parse import urljoin, urlparse
+
 from bs4 import BeautifulSoup
 from sqlalchemy.orm import Session
+
 from app.db.crud import create_or_update_doc
 from app.db.models import Source
 from app.scrapers.http import make_session
 
 DATE_PAT = re.compile(r"\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{1,2},\s+\d{4}\b")
 
+
 def _clean_title(s: str) -> str:
     s = html.unescape((s or "").strip())
     # Normalize a few common curly quotes/dashes that show up in CSVs
-    s = s.replace("\u2019", "'").replace("\u2018", "'").replace("\u201c", '"').replace("\u201d", '"').replace("\u2014", "-").replace("\u2013", "-")
+    s = (
+        s.replace("\u2019", "'")
+        .replace("\u2018", "'")
+        .replace("\u201c", '"')
+        .replace("\u201d", '"')
+        .replace("\u2014", "-")
+        .replace("\u2013", "-")
+    )
     return s
+
 
 def _same_host(href: str, base: str) -> bool:
     try:
@@ -23,6 +77,7 @@ def _same_host(href: str, base: str) -> bool:
         return (a.netloc == "" or a.netloc == b.netloc)
     except Exception:
         return True
+
 
 def _try_parse_date_text(text: str) -> datetime | None:
     m = DATE_PAT.search(text or "")
@@ -32,6 +87,7 @@ def _try_parse_date_text(text: str) -> datetime | None:
         except Exception:
             return None
     return None
+
 
 def _ingest_doc(db: Session, src: Source, title: str, href: str, published_at: datetime | None):
     create_or_update_doc(
@@ -45,13 +101,28 @@ def _ingest_doc(db: Session, src: Source, title: str, href: str, published_at: d
         jurisdiction=src.jurisdiction,
     )
 
+
 # ---------- Site-specific: Texas RRC ----------
 _RRC_BAD_PATH_PREFIXES = (
-    "/about-us", "/apps", "/forms", "/resource-center", "/general-counsel",
-    "/surface-mining", "/gas-services", "/pipeline-safety", "/critical-infrastructure",
-    "/contact-us", "/hearings", "/legal", "/public-engagement", "/oil-and-gas",
-    "/site-policies", "/newsletters", "/announcements",
+    "/about-us",
+    "/apps",
+    "/forms",
+    "/resource-center",
+    "/general-counsel",
+    "/surface-mining",
+    "/gas-services",
+    "/pipeline-safety",
+    "/critical-infrastructure",
+    "/contact-us",
+    "/hearings",
+    "/legal",
+    "/public-engagement",
+    "/oil-and-gas",
+    "/site-policies",
+    "/newsletters",
+    "/announcements",
 )
+
 
 def _parse_rrc_news(db: Session, src: Source, soup: BeautifulSoup):
     base = src.url
@@ -86,17 +157,21 @@ def _parse_rrc_news(db: Session, src: Source, soup: BeautifulSoup):
 
         # Try date from URL: /news/MMDDYY-... or /news/YYYYMMDD-...
         pub = None
-        m6 = re.search(r"/news/(\d{6})-", p)   # e.g., 090525 => 2025-09-05 (MMDDYY)
-        m8 = re.search(r"/news/(\d{8})-", p)   # e.g., 20250113 => 2025-01-13 (YYYYMMDD)
+        m6 = re.search(r"/news/(\d{6})-", p)  # e.g., 090525 => 2025-09-05 (MMDDYY)
+        m8 = re.search(r"/news/(\d{8})-", p)  # e.g., 20250113 => 2025-01-13 (YYYYMMDD)
         if m8:
             y, m, d = m8.group(1)[0:4], m8.group(1)[4:6], m8.group(1)[6:8]
-            try: pub = datetime(int(y), int(m), int(d))
-            except Exception: pass
+            try:
+                pub = datetime(int(y), int(m), int(d))
+            except Exception:
+                pass
         elif m6:
             mm, dd, yy = m6.group(1)[0:2], m6.group(1)[2:4], m6.group(1)[4:6]
             # Assume 20YY (good enough for current content)
-            try: pub = datetime(2000 + int(yy), int(mm), int(dd))
-            except Exception: pass
+            try:
+                pub = datetime(2000 + int(yy), int(mm), int(dd))
+            except Exception:
+                pass
 
         if pub is None:
             # fallback: nearby text
@@ -104,6 +179,7 @@ def _parse_rrc_news(db: Session, src: Source, soup: BeautifulSoup):
             pub = _try_parse_date_text(block.get_text(" ", strip=True) if block else title)
 
         _ingest_doc(db, src, title, href, pub)
+
 
 # ---------- Generic parser with JSON-LD fallback ----------
 def _generic_html(db: Session, src: Source, soup: BeautifulSoup):
@@ -177,7 +253,12 @@ def _generic_html(db: Session, src: Source, soup: BeautifulSoup):
             pub = _try_parse_date_text(block.get_text(" ", strip=True) if block else title)
             _ingest_doc(db, src, title, href, pub)
 
+
 def run_html(db: Session, src: Source):
+    """
+    Fetch src.url, parse HTML, and upsert Document records.
+    Chooses site-specific RRC parser when host ends with rrc.texas.gov; otherwise generic.
+    """
     s = make_session()
     r = s.get(src.url, timeout=20, allow_redirects=True)
     r.raise_for_status()
