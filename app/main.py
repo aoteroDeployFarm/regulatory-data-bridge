@@ -1,8 +1,42 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+"""
+main.py — FastAPI application entrypoint for Regulatory Data Bridge.
+
+Place at: app/main.py
+Run from repo root (folder that contains app/):
+
+Examples:
+  # Dev server (auto-reload)
+  uvicorn app.main:app --reload --port 8000
+
+  # Set CORS and default CSV button target in docs:
+  CORS_ALLOWED_ORIGINS="http://127.0.0.1:5173,https://example.com" \
+  CSV_DEFAULT_URL="/changes/export.csv?jurisdiction=CO&since=2025-09-01" \
+  uvicorn app.main:app --reload
+
+What this app exposes:
+  - Routers (auto-detected if present):
+      • /sources         (list/upsert sources)
+      • /documents       (search/export CSV)
+      • /alerts          (create/list alerts)
+      • /admin           (ingest, toggle, cleanup helpers)
+      • /changes         (JSON + /changes/export.csv)
+  - Meta/health:
+      • /                → redirects to /docs
+      • /healthz         → liveness
+      • /ready           → readiness
+  - Custom Swagger UI (/docs) with a “Download CSV” button.
+    Configure target via env CSV_DEFAULT_URL (default points to /documents/export.csv).
+
+Notes:
+  - A startup-time stdlib-shadowing guard prevents files like html.py at repo root
+    from masking Python’s standard library modules.
+  - Be stricter with CORS in production (set CORS_ALLOWED_ORIGINS explicitly).
+"""
 
 # ============================================================
-#  Stdlib shadowing guard (must be FIRST)
+#  Stdlib shadowing guard (must be FIRST after docstring)
 #  Detect local files that mask Python's stdlib (e.g., html.py).
 #  If found, fail fast with a clear message.
 # ============================================================

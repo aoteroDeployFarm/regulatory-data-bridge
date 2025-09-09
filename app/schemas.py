@@ -1,3 +1,17 @@
+# app/schemas.py
+"""
+Pydantic schemas for API input/output.
+
+Covers:
+  - Sources (create, output)
+  - Documents (output, query)
+  - Alerts (create, output)
+
+Notes:
+  - Uses `from_attributes = True` for ORM → Pydantic conversion.
+  - `DocumentOut.metadata` maps from ORM field `meta`.
+"""
+
 from __future__ import annotations
 from datetime import datetime
 from typing import Optional, Any, Dict
@@ -14,12 +28,15 @@ class SourceCreate(BaseModel):
     type: str = Field(default="rss", pattern="^(rss|html)$")
     active: bool = True
 
+
 class SourceOut(SourceCreate):
     id: int
     created_at: datetime
     updated_at: datetime
+
     class Config:
         from_attributes = True
+
 
 # ----------------------------
 # Documents
@@ -45,6 +62,7 @@ class DocumentOut(BaseModel):
     class Config:
         from_attributes = True
 
+
 class DocumentQuery(BaseModel):
     q: Optional[str] = None
     jurisdiction: Optional[str] = None
@@ -52,6 +70,7 @@ class DocumentQuery(BaseModel):
     date_to: Optional[datetime] = None
     limit: int = 50
     offset: int = 0
+
 
 # ----------------------------
 # Alerts
@@ -62,8 +81,10 @@ class AlertCreate(BaseModel):
     jurisdiction: Optional[str] = None
     active: bool = True
 
+
 class AlertOut(AlertCreate):
     id: int
     created_at: datetime
+
     class Config:
         from_attributes = True
