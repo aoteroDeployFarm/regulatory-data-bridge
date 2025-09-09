@@ -1,3 +1,39 @@
+#!/usr/bin/env python3
+"""
+models.py — SQLAlchemy ORM models for sources, documents, versions, and alerts.
+
+Place at: app/db/models.py
+Run from the repo root (folder that contains app/).
+
+What this does:
+  - Defines the core relational schema using SQLAlchemy declarative mappings:
+      • Source: regulatory sources/endpoints
+      • Document: normalized items fetched from sources
+      • DocumentVersion: change tracking for documents (hash + snapshot)
+      • Alert: keyword/jurisdiction alerts
+  - Adds helpful indexes for common query patterns (jurisdiction, recency, active).
+
+Why it matters:
+  - Centralizes schema in one place for migrations and CRUD helpers.
+  - Enables consistent relationships and cascading deletes.
+
+Related scripts:
+  - Migration: app/db/migrations/001_change_tracking.py
+  - Backfill:  tools/backfill_version.py
+  - CRUD:      app/db/crud.py
+
+Common examples:
+  # Create tables (dev):
+  from sqlalchemy import create_engine
+  from app.db.models import Base
+  engine = create_engine("sqlite:///dev.db")
+  Base.metadata.create_all(engine)
+
+  # With Alembic (if used):
+  #   alembic revision --autogenerate -m "init schema"
+  #   alembic upgrade head
+"""
+
 from __future__ import annotations
 from datetime import datetime
 

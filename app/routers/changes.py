@@ -1,3 +1,44 @@
+#!/usr/bin/env python3
+"""
+changes.py — FastAPI routes for listing/exporting recent document changes.
+
+Place at: app/routers/changes.py
+Mount via: FastAPI(include_router(changes.router)).
+
+What this does:
+  - GET /changes
+      Return recent change records (joined from document_versions + documents).
+      Supports:
+        • jurisdiction=CO (2-letter code)
+        • since=YYYY-MM-DD (optional)
+        • group_by=source (optional aggregation)
+        • format=md (optional server-rendered Markdown)
+        • include=diff (optional, adds dv.diff_text column if present)
+        • limit (1..25000)
+  - GET /changes/export.csv
+      Stream a CSV export of recent changes for a jurisdiction with optional since/limit.
+
+Engine resolution:
+  - Tries your project's app.db.get_engine() if available.
+  - Falls back to DATABASE_URL (env) or sqlite:///dev.db with sqlite safe connect args.
+
+Why it matters:
+  - Unified interface for downstream consumers (email digests, dashboards, CLI tools).
+  - Backward-compatible with schemas missing dv.jurisdiction (falls back to documents.jurisdiction).
+
+Common examples:
+  # JSON list (latest 500 for Colorado)
+  curl "http://127.0.0.1:8000/changes?jurisdiction=CO&limit=500"
+
+  # Markdown preview grouped by source, since a date
+  curl "http://127.0.0.1:8000/changes?jurisdiction=CO&since=2024-01-01&group_by=source&format=md"
+
+  # Include short diff snippets if dv.diff_text exists
+  curl "http://127.0.0.1:8000/changes?jurisdiction=CO&include=diff"
+
+  # CSV export
+  curl -L "http://127.0.0.1:8000/changes/export.csv?jurisdiction=CO&since=2024-01-01&limit=25000" -o CO_changes.csv
+"""
 # app/routers/changes.py
 from fastapi import APIRouter, Query, Response
 from typing import Optional, List

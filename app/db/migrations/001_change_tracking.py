@@ -1,5 +1,34 @@
 #!/usr/bin/env python3
-# Run: PYTHONPATH=. python3 app/db/migrations/001_change_tracking.py
+"""
+001_change_tracking.py — Migration: add document_versions table + tracking fields.
+
+Place at: app/db/migrations/001_change_tracking.py
+Run with:
+  PYTHONPATH=. python3 app/db/migrations/001_change_tracking.py
+
+What this does:
+  1. Ensures document_versions table exists (idempotent).
+     - Tracks versioned content hashes, titles, snapshots, and change_type.
+     - Indexed by (doc_id, fetched_at DESC).
+  2. Adds tracking fields to documents table if missing:
+     - current_hash, first_seen_at, last_seen_at, last_changed_at
+  3. Creates helpful jurisdiction-based index:
+     - Prefers (jurisdiction, updated_at) if updated_at exists.
+     - Otherwise falls back to (jurisdiction, last_changed_at).
+  4. Safe to re-run — adds only missing columns/indexes.
+
+Why it matters:
+  - Enables version history for documents (diff tracking).
+  - Makes queries by jurisdiction + recency efficient.
+  - Backwards-compatible: won’t drop existing data.
+
+Common examples:
+  PYTHONPATH=. python3 app/db/migrations/001_change_tracking.py
+      # Apply migration against dev.db (default)
+  DB_PATH=prod.db PYTHONPATH=. python3 app/db/migrations/001_change_tracking.py
+      # Apply against prod.db
+"""
+
 import os, sqlite3
 
 DB_PATH = os.getenv("DB_PATH", "dev.db")
@@ -49,7 +78,7 @@ def main():
     add_column_if_missing(cur, "documents", "last_changed_at","last_changed_at TIMESTAMP")
     con.commit()
 
-    # 3) Helpful index — prefer (jurisdiction, updated_at) if that column exists,
+    # 3) Helpful index — prefer (jurisdiction, updated_at) if exists,
     #    otherwise use (jurisdiction, last_changed_at)
     cols = column_names(cur, "documents")
     if "updated_at" in cols:

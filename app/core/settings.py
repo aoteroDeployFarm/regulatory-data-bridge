@@ -1,10 +1,41 @@
 #!/usr/bin/env python3
 """
-Centralized, typed settings for the Regulatory Data Bridge.
+setting.py — Centralized, typed settings for the Regulatory Data Bridge.
 
-- Loads from environment variables and .env (see .env.example).
-- Strong typing + validation (Pydantic v2).
-- Cached accessor for FastAPI dependency injection.
+Place at: app/setting.py
+Run from the repo root (folder that contains app/).
+
+What this does:
+  - Loads configuration from environment variables and an optional .env file.
+  - Provides strong typing + validation using Pydantic v2 (pydantic-settings).
+  - Exposes a cached accessor get_settings() for easy DI (e.g., with FastAPI).
+
+Highlights:
+  - Environment-aware (development/staging/production)
+  - Validates port ranges, SMTP port, chunk sizes/overlap, provider requirements
+  - Auto-creates local files directory when STORAGE_PROVIDER=local
+  - Optional providers: OpenAI/Gemini (LLM + embeddings), Slack, Expo/APNs/FCM
+  - Database/Redis/Celery config, RAG params, and observability (Sentry)
+
+Common examples:
+
+  # 1) Import in FastAPI and inject once per request:
+  from fastapi import Depends, FastAPI
+  from app.setting import Settings, get_settings
+
+  app = FastAPI()
+
+  @app.get("/health")
+  def health(cfg: Settings = Depends(get_settings)):
+      return {"ok": True, "env": cfg.env, "llm": cfg.llm_provider}
+
+  # 2) Override via env vars or .env file (see .env.example):
+  export ENV=staging PORT=9000 LOG_LEVEL=DEBUG STORAGE_PROVIDER=local
+
+Notes:
+  - The .env file is loaded automatically if present (utf-8).
+  - If STORAGE_PROVIDER=s3 or gcs, required provider fields must be set or validation will fail.
+  - If LLM_PROVIDER=openai or gemini, corresponding API key must be set or validation will fail.
 """
 
 from __future__ import annotations
@@ -243,7 +274,7 @@ def get_settings() -> Settings:
     Cached settings instance. Use as a FastAPI dependency:
 
         from fastapi import Depends, FastAPI
-        from settings import get_settings
+        from app.setting import get_settings
 
         app = FastAPI()
 

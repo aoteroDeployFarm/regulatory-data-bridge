@@ -1,4 +1,32 @@
-# app/routers/documents.py
+#!/usr/bin/env python3
+"""
+documents.py — FastAPI routes for querying and exporting documents.
+
+Place at: app/routers/documents.py
+Mount via: FastAPI(include_router(documents.router)).
+
+What this does:
+  - GET /documents
+      Query documents with optional filters:
+        • q (search text, matches title/text via ILIKE)
+        • jurisdiction (e.g., CO)
+        • date_from / date_to (ISO timestamps)
+        • limit/offset (paginated)
+      Returns list[DocumentOut] (pydantic schema).
+
+  - GET /documents/export.csv
+      Same filters as above, but streams CSV with:
+        id, title, url, jurisdiction, published_at.
+
+Why it matters:
+  - Provides a clean API for browsing regulatory documents.
+  - CSV export is useful for analysts, spreadsheets, reporting.
+
+Common examples:
+  curl "http://127.0.0.1:8000/documents?q=pipeline&jurisdiction=TX&limit=10"
+
+  curl -L "http://127.0.0.1:8000/documents/export.csv?jurisdiction=CO&limit=100" -o CO_docs.csv
+"""
 from __future__ import annotations
 from datetime import datetime
 import csv, io
@@ -12,6 +40,7 @@ from app.db.crud import search_documents
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
+
 @router.get("", response_model=list[DocumentOut])
 def list_documents(
     q: str | None = None,
@@ -22,6 +51,7 @@ def list_documents(
     offset: int = 0,
     db: Session = Depends(get_db),
 ):
+    """Search documents with optional filters and pagination."""
     return search_documents(
         db,
         q=q,
@@ -31,6 +61,7 @@ def list_documents(
         limit=min(limit, 200),
         offset=offset,
     )
+
 
 @router.get("/export.csv")
 def export_documents_csv(
@@ -42,6 +73,7 @@ def export_documents_csv(
     offset: int = 0,
     db: Session = Depends(get_db),
 ):
+    """Export filtered documents as CSV for download."""
     rows = search_documents(
         db,
         q=q,

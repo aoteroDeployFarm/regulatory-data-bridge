@@ -1,3 +1,67 @@
+#!/usr/bin/env python3
+"""
+crud.py — Database CRUD helpers for sources, documents, and alerts.
+
+Place at: app/db/crud.py
+Run from the repo root (folder that contains app/).
+
+What this does:
+  - Provides thin, typed helper functions around SQLAlchemy ORM for:
+      • Sources: list, upsert
+      • Documents: create-or-update, search with filters
+      • Alerts: create, list
+  - Keeps business logic minimal and side-effect predictable (commit/refresh inside ops).
+
+Prereqs:
+  - SQLAlchemy models defined in app/db/models.py (Source, Document, Alert).
+  - A configured Session injected by the caller (e.g., FastAPI dependency).
+
+Common examples:
+
+  # List only active sources (sorted by name)
+  from app.db.session import get_session
+  from app.db import crud
+  with get_session() as db:
+      active_sources = crud.list_sources(db, active=True)
+
+  # Upsert a source by name (idempotent)
+  crud.upsert_source(
+      db,
+      name="CO – Health Department – Rules",
+      url="https://example.gov/rules",
+      jurisdiction="CO",
+      type_="html",
+      active=True,
+  )
+
+  # Create or update a document by URL
+  crud.create_or_update_doc(
+      db,
+      source_id=1,
+      title="New Rule Adopted",
+      url="https://example.gov/rule-123",
+      published_at=None,
+      text="Full text...",
+      metadata={"agency": "Health"},
+      jurisdiction="CO",
+  )
+
+  # Search documents
+  docs = crud.search_documents(
+      db,
+      q="air quality",
+      jurisdiction="CO",
+      date_from=None,
+      date_to=None,
+      limit=25,
+      offset=0,
+  )
+
+  # Alerts
+  crud.create_alert(db, keyword="PFAS", jurisdiction="CO", active=True)
+  alerts = crud.list_alerts(db, active=True)
+"""
+
 from __future__ import annotations
 from datetime import datetime
 from typing import Optional
